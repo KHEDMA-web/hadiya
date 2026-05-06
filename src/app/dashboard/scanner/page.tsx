@@ -1,7 +1,14 @@
 'use client'
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
+
+const NIVEAU_DARK: Record<string, { bg: string; text: string; accent: string }> = {
+  Bronze:  { bg: 'rgba(113,43,19,0.3)',  text: '#D4915E', accent: '#D4915E' },
+  Argent:  { bg: 'rgba(68,68,65,0.3)',   text: '#C8C5BE', accent: '#C8C5BE' },
+  Or:      { bg: 'rgba(186,117,23,0.2)', text: '#FAC775', accent: '#FAC775' },
+  Platine: { bg: 'rgba(60,52,137,0.3)',  text: '#9C94F0', accent: '#9C94F0' },
+}
 
 export default function Scanner() {
   const router = useRouter()
@@ -17,6 +24,7 @@ export default function Scanner() {
     setLoading(true)
     setError('')
     setCarte(null)
+    setSuccess('')
 
     const { data } = await supabase
       .from('cartes')
@@ -24,13 +32,9 @@ export default function Scanner() {
       .eq('uid_rfid', uid)
       .single()
 
-    if (!data) {
-      setError('Carte introuvable')
-    } else if (data.statut === 'expiree') {
-      setError('Cette carte est expirée')
-    } else {
-      setCarte(data)
-    }
+    if (!data) setError('Carte introuvable')
+    else if (data.statut === 'expiree') setError('Cette carte est expirée')
+    else setCarte(data)
     setLoading(false)
   }
 
@@ -58,89 +62,189 @@ export default function Scanner() {
     })
 
     setCarte({ ...carte, solde: nouveauSolde, points: carte.points + pts })
-    setSuccess(`✓ ${amt.toLocaleString('fr-FR')} DA débités — +${pts} points`)
+    setSuccess(`${amt.toLocaleString('fr-FR')} DA débités · +${pts} points`)
     setMontant('')
     setLoading(false)
   }
 
+  const niveau = carte?.niveau || 'Bronze'
+  const avatarColors = NIVEAU_DARK[niveau] || NIVEAU_DARK.Bronze
+
   return (
-    <div className="min-h-screen bg-[#F7F4EE]">
-      <div className="bg-white border-b border-[#D4CBBA] px-6 py-4 flex items-center gap-4">
-        <button onClick={() => router.push('/dashboard')} className="text-[#8A8275] hover:text-[#2C2A25]">←</button>
-        <div>
-          <h1 className="text-base font-medium text-[#2C2A25]">Scanner une carte</h1>
-          <p className="text-xs text-[#8A8275]">QR code ou numéro de carte</p>
+    <div style={{
+      minHeight: '100vh',
+      background: 'linear-gradient(180deg, #18160F 0%, #1E1C18 100%)',
+      fontFamily: 'var(--font-geist-sans), system-ui, sans-serif',
+    }}>
+      {/* Header */}
+      <div style={{
+        background: 'linear-gradient(180deg, #0F0E0A 0%, #18160F 100%)',
+        borderBottom: '1px solid rgba(186,117,23,0.15)',
+        padding: '0 24px',
+      }}>
+        <div style={{
+          maxWidth: '640px', margin: '0 auto',
+          display: 'flex', alignItems: 'center', gap: '16px',
+          padding: '20px 0',
+        }}>
+          <button className="hd-back" onClick={() => router.push('/dashboard')}>←</button>
+          <div>
+            <h1 style={{ fontSize: '14px', fontWeight: 500, color: '#F7F4EE', letterSpacing: '0.04em', margin: 0 }}>
+              Scanner une carte
+            </h1>
+            <p style={{
+              fontSize: '8px', letterSpacing: '0.25em', textTransform: 'uppercase',
+              color: 'rgba(247,244,238,0.3)', marginTop: '4px',
+            }}>
+              QR code ou numéro de carte
+            </p>
+          </div>
         </div>
       </div>
 
-      <div className="p-6 max-w-lg mx-auto flex flex-col gap-4">
-        <div className="bg-white border border-[#D4CBBA] rounded-2xl p-6">
-          <p className="text-xs font-medium text-[#8A8275] mb-3 uppercase tracking-wider">Numéro de carte</p>
-          <div className="flex gap-3">
+      <div style={{ maxWidth: '640px', margin: '0 auto', padding: '28px 24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+
+        {/* Recherche */}
+        <div className="hd-card" style={{ padding: '24px' }}>
+          <p style={{
+            fontSize: '8px', fontWeight: 500, textTransform: 'uppercase',
+            letterSpacing: '0.28em', color: 'rgba(247,244,238,0.35)', marginBottom: '16px',
+          }}>
+            Numéro de carte
+          </p>
+          <div style={{ display: 'flex', gap: '10px' }}>
             <input
               placeholder="Coller l'UID ou scanner le QR..."
               value={uid}
               onChange={e => setUid(e.target.value)}
-              className="flex-1 border border-[#D4CBBA] rounded-xl px-4 py-3 text-sm text-[#2C2A25] outline-none focus:border-[#2C2A25] bg-[#F7F4EE]"
+              onKeyDown={e => e.key === 'Enter' && handleSearch()}
+              className="hd-input"
+              style={{ flex: 1 }}
             />
             <button
               onClick={handleSearch}
-              disabled={loading}
-              className="bg-[#2C2A25] text-[#F7F4EE] rounded-xl px-5 text-sm font-medium hover:opacity-90 transition disabled:opacity-50"
+              disabled={loading || !uid}
+              className="hd-btn-gold"
+              style={{ whiteSpace: 'nowrap', padding: '14px 20px' }}
             >
               {loading ? '...' : 'Chercher'}
             </button>
           </div>
-          {error && <p className="text-red-500 text-xs mt-2">{error}</p>}
+          {error && (
+            <p style={{ fontSize: '11px', color: '#E07070', marginTop: '12px' }}>{error}</p>
+          )}
         </div>
 
+        {/* Carte trouvée */}
         {carte && (
-          <div className="bg-white border border-[#D4CBBA] rounded-2xl p-6">
-            <div className="flex items-center gap-3 mb-4 pb-4 border-b border-[#D4CBBA]">
-              <div className="w-10 h-10 rounded-full bg-[#FAEEDA] flex items-center justify-center text-sm font-medium text-[#633806]">
+          <div className="hd-card" style={{ overflow: 'hidden', padding: 0 }}>
+            {/* Client header */}
+            <div style={{
+              padding: '20px 24px',
+              display: 'flex', alignItems: 'center', gap: '16px',
+              borderBottom: '1px solid rgba(247,244,238,0.07)',
+            }}>
+              <div style={{
+                width: '44px', height: '44px', borderRadius: '50%',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: '13px', fontWeight: 600, flexShrink: 0,
+                background: avatarColors.bg, color: avatarColors.text,
+              }}>
                 {carte.clients?.prenom?.[0]}{carte.clients?.nom?.[0]}
               </div>
-              <div>
-                <p className="font-medium text-[#2C2A25] text-sm">{carte.clients?.prenom} {carte.clients?.nom}</p>
-                <p className="text-xs text-[#8A8275]">Niveau {carte.niveau} · {carte.points} pts</p>
+              <div style={{ flex: 1 }}>
+                <p style={{ fontSize: '14px', fontWeight: 500, color: '#F7F4EE', letterSpacing: '0.04em' }}>
+                  {carte.clients?.prenom} {carte.clients?.nom}
+                </p>
+                <p style={{ fontSize: '10px', color: 'rgba(247,244,238,0.4)', marginTop: '3px', letterSpacing: '0.1em' }}>
+                  Niveau {carte.niveau} · {carte.points} pts
+                </p>
               </div>
+              <span style={{
+                fontSize: '8px', fontWeight: 500, padding: '5px 12px',
+                borderRadius: '20px', letterSpacing: '0.12em', textTransform: 'uppercase',
+                background: avatarColors.bg, color: avatarColors.text,
+                border: `1px solid ${avatarColors.text}30`,
+              }}>
+                {carte.niveau}
+              </span>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 mb-4">
-              <div className="bg-[#EAF3DE] rounded-xl p-4">
-                <p className="text-xs text-[#27500A] opacity-70 mb-1">Solde disponible</p>
-                <p className="text-xl font-medium text-[#27500A]">{carte.solde?.toLocaleString('fr-FR')} DA</p>
+            {/* Stats row */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr' }}>
+              <div style={{
+                padding: '20px 24px',
+                borderRight: '1px solid rgba(247,244,238,0.07)',
+              }}>
+                <p style={{ fontSize: '8px', letterSpacing: '0.25em', textTransform: 'uppercase', color: 'rgba(247,244,238,0.3)', marginBottom: '8px' }}>
+                  Solde disponible
+                </p>
+                <p style={{
+                  fontFamily: 'var(--font-cormorant), Georgia, serif',
+                  fontSize: '2.2rem', fontWeight: 300, color: '#BA7517', lineHeight: 1,
+                }}>
+                  {carte.solde?.toLocaleString('fr-FR')}
+                  <span style={{ fontSize: '13px', fontFamily: 'var(--font-geist-sans)', color: 'rgba(247,244,238,0.4)', marginLeft: '6px' }}>DA</span>
+                </p>
               </div>
-              <div className="bg-[#F7F4EE] rounded-xl p-4">
-                <p className="text-xs text-[#8A8275] mb-1">Expire le</p>
-                <p className="text-sm font-medium text-[#2C2A25]">
-                  {carte.date_expiration ? new Date(carte.date_expiration).toLocaleDateString('fr-FR') : 'Sans limite'}
+              <div style={{ padding: '20px 24px' }}>
+                <p style={{ fontSize: '8px', letterSpacing: '0.25em', textTransform: 'uppercase', color: 'rgba(247,244,238,0.3)', marginBottom: '8px' }}>
+                  Expire le
+                </p>
+                <p style={{ fontSize: '13px', fontWeight: 500, color: '#F7F4EE' }}>
+                  {carte.date_expiration
+                    ? new Date(carte.date_expiration).toLocaleDateString('fr-FR')
+                    : 'Sans limite'}
                 </p>
               </div>
             </div>
 
+            {/* Success banner */}
             {success && (
-              <div className="bg-[#EAF3DE] border border-[#9FD490] rounded-xl p-3 mb-4 text-sm text-[#27500A] font-medium">
-                {success}
+              <div style={{
+                margin: '0 20px 16px',
+                borderRadius: '14px', padding: '14px 18px',
+                display: 'flex', alignItems: 'center', gap: '12px',
+                background: 'rgba(186,117,23,0.1)', border: '1px solid rgba(186,117,23,0.25)',
+              }}>
+                <div style={{
+                  width: '24px', height: '24px', borderRadius: '50%', flexShrink: 0,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  background: 'rgba(186,117,23,0.2)',
+                }}>
+                  <span style={{ fontSize: '11px', color: '#BA7517' }}>✓</span>
+                </div>
+                <p style={{ fontSize: '13px', color: '#BA7517', fontWeight: 500 }}>{success}</p>
               </div>
             )}
 
-            <p className="text-xs font-medium text-[#8A8275] mb-2 uppercase tracking-wider">Débiter un montant</p>
-            <div className="flex gap-3">
-              <input
-                type="number"
-                placeholder="Montant (DA)"
-                value={montant}
-                onChange={e => setMontant(e.target.value)}
-                className="flex-1 border border-[#D4CBBA] rounded-xl px-4 py-3 text-sm text-[#2C2A25] outline-none focus:border-[#2C2A25] bg-[#F7F4EE]"
-              />
-              <button
-                onClick={handleDebit}
-                disabled={loading || !montant}
-                className="bg-[#2C2A25] text-[#F7F4EE] rounded-xl px-5 text-sm font-medium hover:opacity-90 transition disabled:opacity-50"
-              >
-                Valider
-              </button>
+            {/* Débit form */}
+            <div style={{ padding: '0 24px 24px' }}>
+              <p style={{
+                fontSize: '8px', fontWeight: 500, textTransform: 'uppercase',
+                letterSpacing: '0.28em', color: 'rgba(247,244,238,0.35)', marginBottom: '12px',
+              }}>
+                Débiter un montant
+              </p>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <input
+                  type="number"
+                  placeholder="Montant (DA)"
+                  value={montant}
+                  onChange={e => setMontant(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleDebit()}
+                  className="hd-input"
+                  style={{ flex: 1 }}
+                />
+                <button
+                  onClick={handleDebit}
+                  disabled={loading || !montant}
+                  className="hd-btn-gold"
+                  style={{ whiteSpace: 'nowrap', padding: '14px 20px' }}
+                >
+                  {loading ? '...' : 'Valider'}
+                </button>
+              </div>
             </div>
           </div>
         )}

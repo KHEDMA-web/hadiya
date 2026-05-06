@@ -1,26 +1,143 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-background: #F7F4EE;
+  --color-foreground: #2C2A25;
   --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --font-display: var(--font-cormorant);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: #F7F4EE;
+  color: #2C2A25;
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
+
+/* ═══════════════════════════════════════════
+   Hadiya — Dark Luxury Design System
+═══════════════════════════════════════════ */
+
+.hd-input {
+  background: #1E1C18;
+  border: 1px solid #3A3830;
+  border-radius: 14px;
+  padding: 14px 20px;
+  color: #F7F4EE;
+  font-size: 14px;
+  line-height: 1.4;
+  outline: none;
+  transition: border-color 0.2s ease;
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  letter-spacing: 0.01em;
+  box-sizing: border-box;
+}
+.hd-input::placeholder { color: rgba(247,244,238,0.2); }
+.hd-input:focus { border-color: #BA7517; }
+
+.hd-card {
+  background: linear-gradient(145deg, #2C2A25 0%, #343028 100%);
+  border: 1px solid rgba(186,117,23,0.14);
+  border-radius: 20px;
+}
+
+/* Primary dark button */
+.hd-btn {
+  background: linear-gradient(145deg, #2C2A25, #343028);
+  border: 1px solid #3A3830;
+  border-radius: 14px;
+  padding: 15px 24px;
+  color: rgba(247,244,238,0.85);
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.2s ease, transform 0.15s ease;
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  display: inline-block;
+  text-align: center;
+}
+.hd-btn:hover:not(:disabled) { border-color: rgba(186,117,23,0.45); transform: translateY(-1px); }
+.hd-btn:active:not(:disabled) { transform: translateY(0); }
+.hd-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+/* Gold accent button */
+.hd-btn-gold {
+  background: #BA7517;
+  border: 1px solid rgba(186,117,23,0.5);
+  border-radius: 14px;
+  padding: 15px 24px;
+  color: #FFF6E0;
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  display: inline-block;
+  text-align: center;
+}
+.hd-btn-gold:hover:not(:disabled) { background: #A36714; transform: translateY(-1px); box-shadow: 0 8px 24px rgba(186,117,23,0.35); }
+.hd-btn-gold:active:not(:disabled) { transform: translateY(0); box-shadow: none; }
+.hd-btn-gold:disabled { opacity: 0.35; cursor: not-allowed; }
+
+/* Circular back button */
+.hd-back {
+  width: 38px; height: 38px;
+  border-radius: 50%;
+  border: 1px solid #3A3830;
+  background: none;
+  color: rgba(247,244,238,0.35);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; font-size: 14px;
+  transition: border-color 0.2s ease, color 0.2s ease;
+  flex-shrink: 0;
+}
+.hd-back:hover { border-color: #BA7517; color: #BA7517; }
+
+/* Animations */
+@keyframes hd-fadeUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes hd-goldGlow {
+  0%, 100% { text-shadow: none; }
+  50%       { text-shadow: 0 0 50px rgba(186,117,23,0.22); }
+}
+
+.hd-fade { animation: hd-fadeUp 0.6s cubic-bezier(0.16,1,0.3,1) both; }
+.hd-stat { animation: hd-fadeUp 0.8s cubic-bezier(0.16,1,0.3,1) both, hd-goldGlow 5s ease-in-out 1.5s infinite; }
+
+/* Amount pill buttons (recharge) */
+.hd-amount {
+  background: #1E1C18; border: 1px solid #3A3830; border-radius: 12px;
+  padding: 14px 0; font-size: 13px; color: rgba(247,244,238,0.45);
+  cursor: pointer; transition: all 0.2s ease;
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+}
+.hd-amount:hover { border-color: rgba(186,117,23,0.4); color: rgba(247,244,238,0.7); }
+.hd-amount.active { background: #BA7517; border-color: #BA7517; color: #FFF6E0; font-weight: 600; }
+
+/* Menu item cards (caisse) */
+.hd-menu-item {
+  background: linear-gradient(145deg, #2C2A25, #343028);
+  border: 1px solid rgba(186,117,23,0.12);
+  border-radius: 16px;
+  padding: 16px 10px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.2s ease, transform 0.15s ease;
+}
+.hd-menu-item:hover { border-color: rgba(186,117,23,0.38); transform: scale(1.02); }
+.hd-menu-item:active { transform: scale(0.97); }
+
+/* Client / transaction row */
+.hd-row {
+  background: linear-gradient(145deg, #2C2A25, #343028);
+  border: 1px solid rgba(186,117,23,0.12);
+  border-radius: 18px;
+  transition: border-color 0.2s ease;
+}
+.hd-row:hover { border-color: rgba(186,117,23,0.32); }

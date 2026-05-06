@@ -14,43 +14,85 @@ export default function LoginPage() {
     setLoading(true)
     setError('')
     const { error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) {
-      setError('Email ou mot de passe incorrect')
-    } else {
-      router.push('/dashboard')
-    }
+    if (error) setError('Email ou mot de passe incorrect')
+    else router.push('/dashboard')
     setLoading(false)
   }
 
   return (
-    <div className="min-h-screen bg-[#F7F4EE] flex items-center justify-center">
-      <div className="bg-white border border-[#D4CBBA] rounded-2xl p-8 w-full max-w-sm shadow-sm">
-        <h1 className="text-2xl font-medium text-[#2C2A25] mb-1">Hadiya</h1>
-        <p className="text-sm text-[#8A8275] mb-8">Espace salon — connexion</p>
-        <div className="flex flex-col gap-4">
-          <input
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={e => setEmail(e.target.value)}
-            className="border border-[#D4CBBA] rounded-xl px-4 py-3 text-sm text-[#2C2A25] outline-none focus:border-[#2C2A25] bg-[#F7F4EE]"
-          />
-          <input
-            type="password"
-            placeholder="Mot de passe"
-            value={password}
-            onChange={e => setPassword(e.target.value)}
-            className="border border-[#D4CBBA] rounded-xl px-4 py-3 text-sm text-[#2C2A25] outline-none focus:border-[#2C2A25] bg-[#F7F4EE]"
-          />
-          {error && <p className="text-red-500 text-xs">{error}</p>}
-          <button
-            onClick={handleLogin}
-            disabled={loading}
-            className="bg-[#2C2A25] text-[#F7F4EE] rounded-xl py-3 text-sm font-medium hover:opacity-90 transition disabled:opacity-50"
-          >
-            {loading ? 'Connexion...' : 'Se connecter'}
-          </button>
+    <div className="min-h-screen bg-gradient-to-br from-[#0F0E0A] via-[#18160F] to-[#2C2A25] flex items-center justify-center p-6">
+
+      <div className="fixed inset-0 pointer-events-none bg-[radial-gradient(ellipse_70%_50%_at_50%_0%,rgba(186,117,23,0.07)_0%,transparent_65%)]" />
+
+      <div className="w-full max-w-[360px] relative">
+
+        {/* Wordmark */}
+        <div className="text-center mb-14">
+          <div className="flex items-center justify-center gap-5 mb-3.5">
+            <div className="w-8 h-px bg-[#BA7517] opacity-60" />
+            <h1 className="font-display text-5xl font-light tracking-[0.55em] text-[#F7F4EE] uppercase leading-none">
+              Hadiya
+            </h1>
+            <div className="w-8 h-px bg-[#BA7517] opacity-60" />
+          </div>
+          <p className="text-[8px] tracking-[0.38em] text-[#BA7517] uppercase font-medium opacity-70">
+            Espace salon
+          </p>
         </div>
+
+        {/* Form card */}
+        <div className="bg-gradient-to-br from-[#2C2A25] to-[#343028] border border-[#BA7517]/20 rounded-3xl p-9 shadow-[0_24px_64px_rgba(0,0,0,0.45)]">
+          <div className="flex flex-col gap-5">
+
+            <div>
+              <label htmlFor="email" className="block text-[8px] tracking-[0.28em] uppercase text-[#F7F4EE]/35 font-medium mb-2.5">
+                Adresse email
+              </label>
+              <input
+                id="email"
+                type="email"
+                placeholder="votre@email.com"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleLogin()}
+                className="hd-input w-full"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="password" className="block text-[8px] tracking-[0.28em] uppercase text-[#F7F4EE]/35 font-medium mb-2.5">
+                Mot de passe
+              </label>
+              <input
+                id="password"
+                type="password"
+                placeholder="••••••••"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleLogin()}
+                className="hd-input w-full"
+              />
+            </div>
+
+            {error && (
+              <p className="text-[11px] text-[#E07070] text-center">{error}</p>
+            )}
+
+            <button
+              onClick={handleLogin}
+              disabled={loading}
+              className="hd-btn-gold w-full mt-1"
+            >
+              {loading ? 'Connexion...' : 'Se connecter'}
+            </button>
+
+          </div>
+        </div>
+
+        <p className="text-center text-[8px] tracking-[0.28em] text-[#F7F4EE]/20 uppercase mt-9">
+          Carte cadeau &amp; fidélité
+        </p>
+
       </div>
     </div>
   )
