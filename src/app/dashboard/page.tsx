@@ -1,9 +1,9 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 
-const CARD_DELAYS = ['[animation-delay:0.15s]', '[animation-delay:0.23s]', '[animation-delay:0.31s]', '[animation-delay:0.39s]', '[animation-delay:0.47s]', '[animation-delay:0.55s]', '[animation-delay:0.63s]', '[animation-delay:0.71s]']
+const CARD_DELAYS = ['[animation-delay:0.15s]','[animation-delay:0.23s]','[animation-delay:0.31s]','[animation-delay:0.39s]','[animation-delay:0.47s]','[animation-delay:0.55s]','[animation-delay:0.63s]','[animation-delay:0.71s]']
 
 const NIVEAU_AVATAR: Record<string, string> = {
   Bronze:  'bg-[#C4813A]/20 text-[#C4813A]',
@@ -17,13 +17,18 @@ export default function Dashboard() {
   const [salonNom, setSalonNom] = useState('')
   const router = useRouter()
 
-  // Scanner state
   const [uid, setUid] = useState('')
   const [carte, setCarte] = useState<any>(null)
   const [montant, setMontant] = useState('')
   const [scanLoading, setScanLoading] = useState(false)
   const [scanError, setScanError] = useState('')
   const [scanSuccess, setScanSuccess] = useState('')
+  const [rfidMode, setRfidMode] = useState(false)
+
+  const uidRef = useRef<HTMLInputElement>(null)
+  const montantRef = useRef<HTMLInputElement>(null)
+  const rfidModeRef = useRef(false)
+  const carteFoundRef = useRef(false)
 
   useEffect(() => {
     const init = async () => {
@@ -51,12 +56,19 @@ export default function Dashboard() {
     setScanLoading(true)
     setScanError('')
     setCarte(null)
+    carteFoundRef.current = false
     setScanSuccess('')
     setMontant('')
     const { data } = await supabase.from('cartes').select('*, clients(*)').eq('uid_rfid', uid).single()
-    if (!data) setScanError('Carte introuvable')
-    else if (data.statut === 'expiree') setScanError('Carte expirée')
-    else setCarte(data)
+    if (!data) {
+      setScanError('Carte introuvable')
+    } else if (data.statut === 'expiree') {
+      setScanError('Carte expirée')
+    } else {
+      carteFoundRef.current = true
+      setCarte(data)
+      if (rfidModeRef.current) setTimeout(() => montantRef.current?.focus(), 100)
+    }
     setScanLoading(false)
   }
 
@@ -77,27 +89,65 @@ export default function Dashboard() {
     setMontant('')
     setScanLoading(false)
     setStats(s => ({ ...s, transactions: s.transactions + 1 }))
+    if (rfidModeRef.current) {
+      setTimeout(() => {
+        setUid(''); setCarte(null); carteFoundRef.current = false
+        setScanSuccess(''); uidRef.current?.focus()
+      }, 2000)
+    }
   }
 
-  const resetScan = () => { setUid(''); setCarte(null); setScanError(''); setScanSuccess(''); setMontant('') }
+  const resetScan = () => {
+    setUid(''); setCarte(null); carteFoundRef.current = false
+    setScanError(''); setScanSuccess(''); setMontant('')
+    if (rfidModeRef.current) setTimeout(() => uidRef.current?.focus(), 50)
+  }
+
+  const toggleRfidMode = () => {
+    const next = !rfidMode
+    setRfidMode(next)
+    rfidModeRef.current = next
+    if (next) {
+      setUid(''); setCarte(null); carteFoundRef.current = false
+      setScanError(''); setScanSuccess(''); setMontant('')
+      setTimeout(() => uidRef.current?.focus(), 60)
+    }
+  }
+
+  const handleUidBlur = () => {
+    if (!rfidModeRef.current || carteFoundRef.current) return
+    setTimeout(() => {
+      if (rfidModeRef.current && !carteFoundRef.current) uidRef.current?.focus()
+    }, 100)
+  }
 
   const secondary = [
-    { label: 'Scanner',       sub: 'Lire & débiter une carte',     href: '/dashboard/scanner',       icon: '◈' },
-    { label: 'Caisse POS',    sub: 'Paiement RFID / QR code',      href: '/dashboard/caisse',        icon: '⊞' },
-    { label: 'Clients',       sub: 'Fiches & fidélité',            href: '/dashboard/clients',       icon: '⊹' },
-    { label: 'Recharge',      sub: 'Ajouter du solde',             href: '/dashboard/recharge',      icon: '◎' },
-    { label: 'Produits',      sub: 'Soins, tarifs & catalogue',    href: '/dashboard/produits',      icon: '✦' },
-    { label: 'Statistiques',  sub: 'Chiffre d\'affaires & KPIs',   href: '/dashboard/statistiques',  icon: '≋' },
-    { label: 'Historique',    sub: 'Toutes les transactions',      href: '/dashboard/transactions',  icon: '≡' },
-    { label: 'Admin',         sub: 'Employés & paramètres',        href: '/dashboard/admin',         icon: '◬' },
+    { label: 'Scanner',      sub: 'Lire & débiter une carte',    href: '/dashboard/scanner',      icon: '◈' },
+    { label: 'Caisse POS',   sub: 'Paiement RFID / QR code',     href: '/dashboard/caisse',       icon: '⊞' },
+    { label: 'Clients',      sub: 'Fiches & fidélité',           href: '/dashboard/clients',      icon: '⊹' },
+    { label: 'Recharge',     sub: 'Ajouter du solde',            href: '/dashboard/recharge',     icon: '◎' },
+    { label: 'Produits',     sub: 'Soins, tarifs & catalogue',   href: '/dashboard/produits',     icon: '✦' },
+    { label: 'Statistiques', sub: "Chiffre d'affaires & KPIs",   href: '/dashboard/statistiques', icon: '≋' },
+    { label: 'Historique',   sub: 'Toutes les transactions',     href: '/dashboard/transactions', icon: '≡' },
+    { label: 'Admin',        sub: 'Employés & paramètres',       href: '/dashboard/admin',        icon: '◬' },
   ]
 
   const niveau = carte?.niveau || 'Bronze'
 
   return (
     <div className="min-h-screen bg-[#F7F4EE]">
+      <style>{`
+        @keyframes rfid-dot-pulse {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.4; transform: scale(0.75); }
+        }
+        @keyframes rfid-border-glow {
+          0%, 100% { box-shadow: 0 0 0 1px rgba(186,117,23,0.55), 0 0 8px rgba(186,117,23,0.2); }
+          50% { box-shadow: 0 0 0 2px rgba(186,117,23,1), 0 0 18px rgba(186,117,23,0.45); }
+        }
+      `}</style>
 
-      {/* DARK HERO */}
+      {/* ── DARK HERO ── */}
       <div className="bg-gradient-to-b from-[#18160F] to-[#2C2A25] border-b border-[#BA7517]/[0.18]">
         <div className="max-w-[1040px] mx-auto px-6 md:px-12 py-6 md:py-8">
 
@@ -126,7 +176,7 @@ export default function Dashboard() {
           {/* STATS + SCANNER */}
           <div className="flex flex-col md:flex-row gap-6 md:gap-10 md:items-start">
 
-            {/* Stats gauche */}
+            {/* Stats */}
             <div className="flex items-center gap-5 md:gap-7 flex-shrink-0">
               {[
                 { label: 'Cartes actives', value: stats.cartes },
@@ -143,23 +193,59 @@ export default function Dashboard() {
               ))}
             </div>
 
-            {/* Séparateur vertical */}
             <div className="hidden md:block w-px self-stretch bg-[#F7F4EE]/[0.08]" />
 
-            {/* Scanner droite */}
+            {/* ── SCANNER ── */}
             <div className="flex-1 min-w-0">
               {!carte ? (
                 <div className="flex flex-col gap-2">
-                  <p className="text-[8px] tracking-[0.28em] uppercase text-[#F7F4EE]/30 font-medium mb-1">
-                    Scanner une carte
-                  </p>
+
+                  {/* Titre + bouton RFID */}
+                  <div className="flex items-center justify-between mb-0.5">
+                    <p className="text-[8px] tracking-[0.28em] uppercase text-[#F7F4EE]/30 font-medium">
+                      Scanner une carte
+                    </p>
+                    <button
+                      onClick={toggleRfidMode}
+                      className="text-[8px] font-bold tracking-[0.1em] uppercase px-2.5 py-1 rounded-full transition-all whitespace-nowrap"
+                      style={{
+                        background: rfidMode ? '#BA7517' : 'transparent',
+                        color:      rfidMode ? '#ffffff' : '#BA7517',
+                        border:     rfidMode ? 'none'    : '1px solid rgba(186,117,23,0.4)',
+                      }}
+                    >
+                      {rfidMode ? 'RFID ON' : 'Mode RFID'}
+                    </button>
+                  </div>
+
+                  {/* Indicateur attente */}
+                  {rfidMode && (
+                    <div
+                      className="flex items-center gap-2 px-3 py-2 rounded-xl"
+                      style={{ background: 'rgba(186,117,23,0.07)', border: '1px solid rgba(186,117,23,0.18)' }}
+                    >
+                      <div style={{
+                        width: '6px', height: '6px', borderRadius: '50%',
+                        background: '#BA7517', flexShrink: 0,
+                        animation: 'rfid-dot-pulse 1.2s ease-in-out infinite',
+                      }} />
+                      <p className="text-[9px] tracking-[0.15em] uppercase font-medium" style={{ color: '#BA7517' }}>
+                        En attente de la carte...
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Input UID */}
                   <div className="flex gap-2">
                     <input
-                      placeholder="UID ou QR code..."
+                      ref={uidRef}
+                      placeholder={rfidMode ? 'Approcher la carte RFID...' : 'UID ou QR code...'}
                       value={uid}
                       onChange={e => setUid(e.target.value)}
                       onKeyDown={e => e.key === 'Enter' && handleScan()}
+                      onBlur={handleUidBlur}
                       className="flex-1 bg-[#F7F4EE]/[0.07] border border-[#F7F4EE]/[0.1] rounded-xl px-4 py-2.5 text-sm text-[#F7F4EE] placeholder:text-[#F7F4EE]/20 outline-none focus:border-[#BA7517]/60 transition-colors"
+                      style={rfidMode ? { animation: 'rfid-border-glow 1.5s ease-in-out infinite' } : {}}
                     />
                     <button
                       onClick={handleScan}
@@ -171,31 +257,59 @@ export default function Dashboard() {
                   </div>
                   {scanError && <p className="text-[11px] text-rose-400">{scanError}</p>}
                 </div>
+
               ) : (
+                /* ── FICHE CLIENT INLINE ── */
                 <div className="bg-[#F7F4EE]/[0.05] border border-[#F7F4EE]/[0.1] rounded-2xl overflow-hidden">
-                  {/* Client */}
-                  <div className="flex items-center gap-3 px-4 py-3 border-b border-[#F7F4EE]/[0.07]">
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-semibold flex-shrink-0 ${NIVEAU_AVATAR[niveau]}`}>
+
+                  {/* En-tête client */}
+                  <div className="flex items-start gap-3 px-4 py-3.5 border-b border-[#F7F4EE]/[0.07]">
+                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-xs font-semibold flex-shrink-0 mt-0.5 ${NIVEAU_AVATAR[niveau]}`}>
                       {carte.clients?.prenom?.[0]?.toUpperCase()}{carte.clients?.nom?.[0]?.toUpperCase()}
                     </div>
+
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-[#F7F4EE] truncate">{carte.clients?.prenom} {carte.clients?.nom}</p>
-                      <p className="text-[10px] text-[#F7F4EE]/35 mt-0.5">{carte.niveau} · {carte.points} pts</p>
+                      <p className="text-sm font-medium text-[#F7F4EE] truncate">
+                        {carte.clients?.prenom} {carte.clients?.nom}
+                      </p>
+                      <p className="text-[10px] text-[#F7F4EE]/35 mt-0.5">
+                        {carte.niveau} · {carte.points} pts
+                        {carte.clients?.telephone ? ` · ${carte.clients.telephone}` : ''}
+                      </p>
                     </div>
-                    <div className="text-right flex-shrink-0">
-                      <p className="text-base font-light text-[#BA7517]">{carte.solde?.toLocaleString('fr-FR')} <span className="text-[10px] text-[#F7F4EE]/30">DA</span></p>
+
+                    <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
+                      <p className="text-base font-light" style={{ color: '#BA7517' }}>
+                        {carte.solde?.toLocaleString('fr-FR')}
+                        <span className="text-[10px] text-[#F7F4EE]/30 ml-1">DA</span>
+                      </p>
+                      {/* Bouton fiche complète */}
+                      <button
+                        onClick={() => router.push(`/dashboard/clients/${carte.clients?.id}`)}
+                        className="text-[8px] tracking-[0.08em] uppercase font-semibold px-2 py-0.5 rounded-md transition-all whitespace-nowrap hover:opacity-80"
+                        style={{ color: '#BA7517', border: '1px solid rgba(186,117,23,0.35)' }}
+                      >
+                        Voir fiche →
+                      </button>
                     </div>
-                    <button onClick={resetScan} className="text-[#F7F4EE]/20 hover:text-[#F7F4EE]/60 transition-colors text-lg leading-none ml-1">×</button>
+
+                    <button
+                      onClick={resetScan}
+                      className="text-[#F7F4EE]/20 hover:text-[#F7F4EE]/60 transition-colors text-lg leading-none ml-1 mt-0.5 flex-shrink-0"
+                    >
+                      ×
+                    </button>
                   </div>
 
                   {/* Débit */}
                   <div className="px-4 py-3 flex flex-col gap-2">
                     {scanSuccess && (
-                      <p className="text-[11px] text-[#BA7517] font-medium">✓ {scanSuccess}</p>
+                      <p className="text-[11px] font-medium" style={{ color: '#BA7517' }}>✓ {scanSuccess}</p>
                     )}
                     {scanError && <p className="text-[11px] text-rose-400">{scanError}</p>}
                     <div className="flex gap-2">
                       <input
+                        ref={montantRef}
                         type="number"
                         placeholder="Montant à débiter (DA)"
                         value={montant}
@@ -220,10 +334,9 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* CREAM ZONE */}
+      {/* ── CREAM ZONE ── */}
       <div className="max-w-[1040px] mx-auto px-6 md:px-12 pt-8 md:pt-11 pb-16 md:pb-[72px]">
 
-        {/* FEATURED CTA */}
         <button
           className="hd-fade w-full bg-[#BA7517] border border-[#BA7517]/35 rounded-[22px] px-6 py-7 md:px-10 md:py-[34px] mb-3.5 flex items-center justify-between cursor-pointer shadow-[0_8px_36px_rgba(186,117,23,0.28)] text-left hover:bg-[#A36714] hover:shadow-[0_16px_48px_rgba(186,117,23,0.5)] hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200"
           onClick={() => router.push('/dashboard/cartes/nouvelle')}
@@ -241,7 +354,6 @@ export default function Dashboard() {
           </div>
         </button>
 
-        {/* SECONDARY GRID */}
         <div className="grid grid-cols-2 gap-3 md:gap-3.5">
           {secondary.map((a, i) => (
             <button

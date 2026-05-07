@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 
@@ -18,12 +18,20 @@ export default function Scanner() {
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState('')
   const [error, setError] = useState('')
+  const [rfidMode, setRfidMode] = useState(false)
+
+  const uidRef = useRef<HTMLInputElement>(null)
+  const montantRef = useRef<HTMLInputElement>(null)
+  // Refs mirror state so blur/timeout callbacks always see the latest values
+  const rfidModeRef = useRef(false)
+  const carteFoundRef = useRef(false)
 
   const handleSearch = async () => {
     if (!uid) return
     setLoading(true)
     setError('')
     setCarte(null)
+    carteFoundRef.current = false
     setSuccess('')
 
     const { data } = await supabase
@@ -32,9 +40,17 @@ export default function Scanner() {
       .eq('uid_rfid', uid)
       .single()
 
-    if (!data) setError('Carte introuvable')
-    else if (data.statut === 'expiree') setError('Cette carte est expirée')
-    else setCarte(data)
+    if (!data) {
+      setError('Carte introuvable')
+    } else if (data.statut === 'expiree') {
+      setError('Cette carte est expirée')
+    } else {
+      carteFoundRef.current = true
+      setCarte(data)
+      if (rfidModeRef.current) {
+        setTimeout(() => montantRef.current?.focus(), 100)
+      }
+    }
     setLoading(false)
   }
 
@@ -65,6 +81,41 @@ export default function Scanner() {
     setSuccess(`${amt.toLocaleString('fr-FR')} DA débités · +${pts} points`)
     setMontant('')
     setLoading(false)
+
+    // En mode RFID : réinitialiser après 2s pour le prochain client
+    if (rfidModeRef.current) {
+      setTimeout(() => {
+        setUid('')
+        setCarte(null)
+        carteFoundRef.current = false
+        setSuccess('')
+        uidRef.current?.focus()
+      }, 2000)
+    }
+  }
+
+  // Maintenir le focus sur UID en mode RFID tant qu'aucune carte n'est trouvée
+  const handleUidBlur = () => {
+    if (!rfidModeRef.current || carteFoundRef.current) return
+    setTimeout(() => {
+      if (rfidModeRef.current && !carteFoundRef.current) {
+        uidRef.current?.focus()
+      }
+    }, 100)
+  }
+
+  const toggleRfidMode = () => {
+    const next = !rfidMode
+    setRfidMode(next)
+    rfidModeRef.current = next
+    if (next) {
+      setUid('')
+      setCarte(null)
+      carteFoundRef.current = false
+      setError('')
+      setSuccess('')
+      setTimeout(() => uidRef.current?.focus(), 50)
+    }
   }
 
   const niveau = carte?.niveau || 'Bronze'
@@ -76,6 +127,17 @@ export default function Scanner() {
       background: 'linear-gradient(180deg, #18160F 0%, #1E1C18 100%)',
       fontFamily: 'var(--font-geist-sans), system-ui, sans-serif',
     }}>
+      <style>{`
+        @keyframes rfid-dot-pulse {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.4; transform: scale(0.75); }
+        }
+        @keyframes rfid-border-glow {
+          0%, 100% { box-shadow: 0 0 0 1px rgba(186,117,23,0.5), 0 0 8px rgba(186,117,23,0.2); }
+          50% { box-shadow: 0 0 0 2px rgba(186,117,23,0.95), 0 0 18px rgba(186,117,23,0.45); }
+        }
+      `}</style>
+
       {/* Header */}
       <div style={{
         background: 'linear-gradient(180deg, #0F0E0A 0%, #18160F 100%)',
@@ -88,7 +150,7 @@ export default function Scanner() {
           padding: '20px 0',
         }}>
           <button className="hd-back" onClick={() => router.push('/dashboard')}>←</button>
-          <div>
+          <div style={{ flex: 1 }}>
             <h1 style={{ fontSize: '14px', fontWeight: 500, color: '#F7F4EE', letterSpacing: '0.04em', margin: 0 }}>
               Scanner une carte
             </h1>
@@ -99,10 +161,55 @@ export default function Scanner() {
               QR code ou numéro de carte
             </p>
           </div>
+
+          {/* Bouton toggle RFID */}
+          <button
+            onClick={toggleRfidMode}
+            style={{
+              padding: '8px 16px',
+              borderRadius: '20px',
+              fontSize: '10px',
+              fontWeight: 600,
+              letterSpacing: '0.1em',
+              textTransform: 'uppercase',
+              border: rfidMode ? 'none' : '1px solid rgba(186,117,23,0.4)',
+              background: rfidMode ? '#BA7517' : 'transparent',
+              color: rfidMode ? '#FFFFFF' : '#BA7517',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              whiteSpace: 'nowrap',
+              flexShrink: 0,
+            }}
+          >
+            {rfidMode ? 'RFID ON' : 'Mode RFID'}
+          </button>
         </div>
       </div>
 
       <div style={{ maxWidth: '640px', margin: '0 auto', padding: '28px 24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+
+        {/* Indicateur "En attente" — visible uniquement en mode RFID sans carte */}
+        {rfidMode && !carte && (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: '12px',
+            padding: '14px 20px', borderRadius: '14px',
+            background: 'rgba(186,117,23,0.07)',
+            border: '1px solid rgba(186,117,23,0.2)',
+          }}>
+            <div style={{
+              width: '8px', height: '8px', borderRadius: '50%',
+              background: '#BA7517', flexShrink: 0,
+              animation: 'rfid-dot-pulse 1.2s ease-in-out infinite',
+            }} />
+            <p style={{
+              fontSize: '11px', color: '#BA7517',
+              letterSpacing: '0.15em', textTransform: 'uppercase',
+              fontWeight: 500, margin: 0,
+            }}>
+              En attente de la carte...
+            </p>
+          </div>
+        )}
 
         {/* Recherche */}
         <div className="hd-card" style={{ padding: '24px' }}>
@@ -114,12 +221,17 @@ export default function Scanner() {
           </p>
           <div style={{ display: 'flex', gap: '10px' }}>
             <input
-              placeholder="Coller l'UID ou scanner le QR..."
+              ref={uidRef}
+              placeholder={rfidMode ? 'Approcher la carte RFID...' : "Coller l'UID ou scanner le QR..."}
               value={uid}
               onChange={e => setUid(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleSearch()}
+              onBlur={handleUidBlur}
               className="hd-input"
-              style={{ flex: 1 }}
+              style={{
+                flex: 1,
+                ...(rfidMode ? { animation: 'rfid-border-glow 1.5s ease-in-out infinite' } : {}),
+              }}
             />
             <button
               onClick={handleSearch}
@@ -228,6 +340,7 @@ export default function Scanner() {
               </p>
               <div style={{ display: 'flex', gap: '10px' }}>
                 <input
+                  ref={montantRef}
                   type="number"
                   placeholder="Montant (DA)"
                   value={montant}

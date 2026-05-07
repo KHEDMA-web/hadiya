@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 
@@ -14,6 +14,12 @@ export default function Caisse() {
   const [step, setStep] = useState<'order' | 'pay' | 'done'>('order')
   const [loading, setLoading] = useState(false)
   const [errPay, setErrPay] = useState('')
+  const [rfidMode, setRfidMode] = useState(false)
+
+  const uidRef = useRef<HTMLInputElement>(null)
+  const confirmRef = useRef<HTMLButtonElement>(null)
+  const rfidModeRef = useRef(false)
+  const carteFoundRef = useRef(false)
 
   useEffect(() => {
     const init = async () => {
@@ -39,6 +45,14 @@ export default function Caisse() {
     init()
   }, [])
 
+  // Refocus UID quand on entre en step 'pay' avec le mode RFID déjà actif
+  useEffect(() => {
+    if (step === 'pay' && rfidMode) {
+      carteFoundRef.current = false
+      setTimeout(() => uidRef.current?.focus(), 80)
+    }
+  }, [step, rfidMode])
+
   const total = Object.values(order).reduce((s, i) => s + i.prix * i.qty, 0)
 
   const addItem = (item: any) => {
@@ -63,9 +77,15 @@ export default function Caisse() {
     if (!uid) return
     setLoading(true)
     setErrPay('')
+    carteFoundRef.current = false
     const { data } = await supabase.from('cartes').select('*, clients(*)').eq('uid_rfid', uid).single()
-    if (!data) setErrPay('Carte introuvable')
-    else setCarte(data)
+    if (!data) {
+      setErrPay('Carte introuvable')
+    } else {
+      carteFoundRef.current = true
+      setCarte(data)
+      if (rfidModeRef.current) setTimeout(() => confirmRef.current?.focus(), 100)
+    }
     setLoading(false)
   }
 
@@ -83,6 +103,26 @@ export default function Caisse() {
     })
     setStep('done')
     setLoading(false)
+  }
+
+  const toggleRfidMode = () => {
+    const next = !rfidMode
+    setRfidMode(next)
+    rfidModeRef.current = next
+    if (next) {
+      setUid('')
+      setCarte(null)
+      carteFoundRef.current = false
+      setErrPay('')
+      setTimeout(() => uidRef.current?.focus(), 60)
+    }
+  }
+
+  const handleUidBlur = () => {
+    if (!rfidModeRef.current || carteFoundRef.current) return
+    setTimeout(() => {
+      if (rfidModeRef.current && !carteFoundRef.current) uidRef.current?.focus()
+    }, 100)
   }
 
   if (step === 'done') return (
@@ -115,6 +155,16 @@ export default function Caisse() {
 
   return (
     <div className="min-h-screen bg-[#E8E2D5] flex flex-col">
+      <style>{`
+        @keyframes rfid-dot-pulse {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.4; transform: scale(0.75); }
+        }
+        @keyframes rfid-border-glow {
+          0%, 100% { box-shadow: 0 0 0 1px rgba(186,117,23,0.55), 0 0 6px rgba(186,117,23,0.2); }
+          50% { box-shadow: 0 0 0 2px rgba(186,117,23,1), 0 0 14px rgba(186,117,23,0.45); }
+        }
+      `}</style>
       {/* Header */}
       <div className="bg-[#2C2A25] px-6 py-4 flex items-center gap-4 shadow-lg">
         <button
@@ -220,14 +270,51 @@ export default function Caisse() {
 
             {step === 'pay' && (
               <div className="flex flex-col gap-3">
-                <p className="text-[9px] font-medium uppercase tracking-[0.25em] text-[#8A8275]">Carte client</p>
+
+                {/* Label + toggle RFID */}
+                <div className="flex items-center justify-between">
+                  <p className="text-[9px] font-medium uppercase tracking-[0.25em] text-[#8A8275]">Carte client</p>
+                  <button
+                    onClick={toggleRfidMode}
+                    className="text-[8px] font-bold tracking-[0.08em] uppercase px-2 py-0.5 rounded-full transition-all whitespace-nowrap"
+                    style={{
+                      background: rfidMode ? '#BA7517' : 'transparent',
+                      color:      rfidMode ? '#ffffff' : '#BA7517',
+                      border:     rfidMode ? 'none'    : '1px solid rgba(186,117,23,0.4)',
+                    }}
+                  >
+                    {rfidMode ? 'RFID ON' : 'Mode RFID'}
+                  </button>
+                </div>
+
+                {/* Indicateur En attente */}
+                {rfidMode && !carte && (
+                  <div
+                    className="flex items-center gap-2 px-2.5 py-2 rounded-lg"
+                    style={{ background: 'rgba(186,117,23,0.07)', border: '1px solid rgba(186,117,23,0.18)' }}
+                  >
+                    <div style={{
+                      width: '5px', height: '5px', borderRadius: '50%',
+                      background: '#BA7517', flexShrink: 0,
+                      animation: 'rfid-dot-pulse 1.2s ease-in-out infinite',
+                    }} />
+                    <p className="text-[8px] tracking-[0.12em] uppercase font-medium" style={{ color: '#BA7517' }}>
+                      En attente de la carte...
+                    </p>
+                  </div>
+                )}
+
+                {/* Input UID */}
                 <div className="flex gap-2">
                   <input
-                    placeholder="UID de la carte..."
+                    ref={uidRef}
+                    placeholder={rfidMode ? 'Approcher la carte...' : 'UID de la carte...'}
                     value={uid}
                     onChange={e => setUid(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && handleFindCarte()}
+                    onBlur={handleUidBlur}
                     className="flex-1 border border-[#4A4840] rounded-xl px-3 py-2.5 text-xs text-[#F7F4EE] outline-none focus:border-[#BA7517] bg-[#3A3830] transition-colors placeholder:text-[#5A5850]"
+                    style={rfidMode ? { animation: 'rfid-border-glow 1.5s ease-in-out infinite' } : {}}
                   />
                   <button
                     onClick={handleFindCarte}
@@ -237,7 +324,9 @@ export default function Caisse() {
                     OK
                   </button>
                 </div>
+
                 {errPay && <p className="text-[10px] text-rose-400">{errPay}</p>}
+
                 {carte && (
                   <div className={`rounded-xl p-3 border ${carte.solde >= total ? 'bg-[#BA7517]/10 border-[#BA7517]/30' : 'bg-rose-500/10 border-rose-500/30'}`}>
                     <p className="text-[10px] font-medium text-[#F7F4EE]">{carte.clients?.prenom} {carte.clients?.nom}</p>
@@ -245,15 +334,24 @@ export default function Caisse() {
                     {carte.solde < total && <p className="text-[10px] text-rose-400 mt-1 font-medium">Solde insuffisant</p>}
                   </div>
                 )}
+
                 <button
+                  ref={confirmRef}
                   onClick={handlePay}
                   disabled={!carte || carte.solde < total || loading}
                   className="w-full bg-[#BA7517] text-white rounded-xl py-3 text-[10px] tracking-[0.15em] uppercase font-medium hover:bg-[#A36714] transition-colors disabled:opacity-30 shadow-[0_4px_12px_rgba(186,117,23,0.3)]"
                 >
                   {loading ? '...' : `Confirmer ${total.toLocaleString('fr-FR')} DA`}
                 </button>
+
                 <button
-                  onClick={() => { setStep('order'); setCarte(null); setUid(''); setErrPay('') }}
+                  onClick={() => {
+                    setStep('order')
+                    setCarte(null)
+                    carteFoundRef.current = false
+                    setUid('')
+                    setErrPay('')
+                  }}
                   className="text-[9px] tracking-[0.15em] uppercase text-[#8A8275] text-center hover:text-[#F7F4EE] transition-colors"
                 >
                   Annuler

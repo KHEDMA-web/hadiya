@@ -80,7 +80,8 @@ export default function Clients() {
             return (
               <div
                 key={client.id}
-                className="bg-white border border-[#C4B89E] rounded-2xl p-4 flex items-center gap-4 shadow-md hover:shadow-lg hover:border-[#BA7517] transition-all duration-200"
+                onClick={() => router.push(`/dashboard/clients/${client.id}`)}
+                className="bg-white border border-[#C4B89E] rounded-2xl p-4 flex items-center gap-4 shadow-md hover:shadow-lg hover:border-[#BA7517] transition-all duration-200 cursor-pointer active:scale-[0.99]"
               >
                 {/* Avatar */}
                 <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-sm font-semibold flex-shrink-0 ${style.avatar}`}>
