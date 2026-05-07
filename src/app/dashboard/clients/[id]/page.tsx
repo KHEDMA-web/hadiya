@@ -24,6 +24,14 @@ const TX_STYLE: Record<string, { color: string; bg: string; sign: string; icon: 
   cadeau:   { color: '#BA7517', bg: 'rgba(186,117,23,0.08)',  sign: '+', icon: '✦' },
 }
 
+// ── Calcule le bon niveau selon les points ──
+function getNiveau(points: number): string {
+  if (points >= 3000) return 'Platine'
+  if (points >= 1500) return 'Or'
+  if (points >= 500)  return 'Argent'
+  return 'Bronze'
+}
+
 export default function FicheClient() {
   const router = useRouter()
   const params = useParams()
@@ -77,6 +85,12 @@ export default function FicheClient() {
         .order('created_at', { ascending: false }).limit(1).maybeSingle()
 
       if (carteData) {
+        // ── Corrige le niveau au chargement si nécessaire ──
+        const bonNiveau = getNiveau(carteData.points || 0)
+        if (bonNiveau !== carteData.niveau) {
+          await supabase.from('cartes').update({ niveau: bonNiveau }).eq('id', carteData.id)
+          carteData.niveau = bonNiveau
+        }
         setCarte(carteData)
         const { data: txData } = await supabase
           .from('transactions').select('*').eq('carte_id', carteData.id)
@@ -146,20 +160,27 @@ export default function FicheClient() {
     setRechargeLoading(true)
     setRechargeSuccess('')
     const nouveauSolde = carte.solde + amt
+    const nouveauxPoints = carte.points + Math.round(amt / 100 * 2)
     const pts = Math.round(amt / 100 * 2)
+    // ── Calcule le nouveau niveau ──
+    const bonNiveau = getNiveau(nouveauxPoints)
     await Promise.all([
-      supabase.from('cartes').update({ solde: nouveauSolde, points: carte.points + pts }).eq('id', carte.id),
+      supabase.from('cartes').update({
+        solde: nouveauSolde,
+        points: nouveauxPoints,
+        niveau: bonNiveau,
+      }).eq('id', carte.id),
       supabase.from('transactions').insert({
         carte_id: carte.id, type: 'recharge', montant: amt,
         points_gagnes: pts, description: `Recharge — ${amt.toLocaleString('fr-FR')} DA`,
       }),
     ])
-    setCarte((c: any) => ({ ...c, solde: nouveauSolde, points: c.points + pts }))
+    setCarte((c: any) => ({ ...c, solde: nouveauSolde, points: nouveauxPoints, niveau: bonNiveau }))
     setTransactions(prev => [{
       id: `tmp-${Date.now()}`, type: 'recharge', montant: amt, points_gagnes: pts,
       description: `Recharge — ${amt.toLocaleString('fr-FR')} DA`, created_at: new Date().toISOString(),
     }, ...prev.slice(0, 9)])
-    setRechargeSuccess(`${amt.toLocaleString('fr-FR')} DA rechargés · +${pts} points`)
+    setRechargeSuccess(`${amt.toLocaleString('fr-FR')} DA rechargés · +${pts} points${bonNiveau !== carte.niveau ? ` · 🎉 Niveau ${bonNiveau} !` : ''}`)
     setRechargeAmt('')
     setRechargeLoading(false)
     setTimeout(() => setRechargeSuccess(''), 3000)
@@ -247,7 +268,6 @@ export default function FicheClient() {
           </button>
 
           <div className="flex items-start gap-4">
-            {/* Avatar */}
             <div
               className="w-16 h-16 rounded-2xl flex items-center justify-center text-xl font-semibold flex-shrink-0"
               style={{ background: nc.bg, color: nc.text, border: `1px solid ${nc.border}` }}
@@ -280,8 +300,6 @@ export default function FicheClient() {
 
         {/* ══ 2. CARTE & SOLDE ══ */}
         <div className="bg-white border border-[#C4B89E] rounded-2xl shadow-md overflow-hidden">
-
-          {/* Solde / Points */}
           <div className="grid grid-cols-2 divide-x divide-[#E8E2D5]">
             <div className="p-5">
               <p className="text-[8px] tracking-[0.25em] uppercase text-[#8A8275] mb-2">Solde disponible</p>
@@ -299,7 +317,6 @@ export default function FicheClient() {
             </div>
           </div>
 
-          {/* Barre progression niveau */}
           {carte && (
             <div className="px-5 py-4 border-t border-[#E8E2D5]">
               <div className="flex items-center justify-between mb-2">
@@ -321,7 +338,6 @@ export default function FicheClient() {
             </div>
           )}
 
-          {/* UID RFID */}
           <div className="px-5 py-4 border-t border-[#E8E2D5] flex items-center justify-between gap-3">
             <div className="min-w-0 flex-1">
               <p className="text-[8px] tracking-[0.2em] uppercase text-[#8A8275] mb-1">Carte RFID</p>
@@ -333,55 +349,38 @@ export default function FicheClient() {
             {carte && !rfidOpen && (
               <div className="flex items-center gap-2 flex-shrink-0">
                 {carte.uid_rfid && (
-                  <button
-                    onClick={openQr}
+                  <button onClick={openQr}
                     className="text-[9px] font-semibold tracking-[0.1em] uppercase px-3 py-1.5 rounded-lg border transition-colors whitespace-nowrap hover:opacity-80"
-                    style={{ borderColor: 'rgba(186,117,23,0.4)', color: '#BA7517' }}
-                  >
+                    style={{ borderColor: 'rgba(186,117,23,0.4)', color: '#BA7517' }}>
                     Voir QR code
                   </button>
                 )}
-                <button
-                  onClick={openRfid}
+                <button onClick={openRfid}
                   className="text-[9px] font-semibold tracking-[0.1em] uppercase px-3 py-1.5 rounded-lg border transition-colors whitespace-nowrap hover:opacity-80"
-                  style={{ borderColor: 'rgba(186,117,23,0.4)', color: '#BA7517' }}
-                >
+                  style={{ borderColor: 'rgba(186,117,23,0.4)', color: '#BA7517' }}>
                   {carte.uid_rfid ? 'Modifier' : 'Associer carte RFID'}
                 </button>
               </div>
             )}
           </div>
 
-          {/* Zone saisie RFID */}
           {rfidOpen && (
             <div className="px-5 pb-5 border-t border-[#E8E2D5]">
               <p className="text-[9px] tracking-[0.18em] uppercase text-[#8A8275] mt-4 mb-3">
                 Approcher la carte RFID du lecteur
               </p>
               <div className="flex gap-2">
-                <input
-                  ref={rfidRef}
-                  placeholder="UID lu automatiquement..."
-                  value={rfidValue}
-                  onChange={e => setRfidValue(e.target.value)}
+                <input ref={rfidRef} placeholder="UID lu automatiquement..."
+                  value={rfidValue} onChange={e => setRfidValue(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && handleRfidAssociate()}
                   className="flex-1 border rounded-xl px-4 py-2.5 text-sm text-[#2C2A25] outline-none font-mono"
-                  style={{
-                    borderColor: 'rgba(186,117,23,0.5)',
-                    animation: 'rfid-glow 1.5s ease-in-out infinite',
-                  }}
-                />
-                <button
-                  onClick={handleRfidAssociate}
-                  disabled={rfidSaving || !rfidValue}
-                  className="bg-[#BA7517] text-white rounded-xl px-4 py-2.5 text-xs font-medium hover:bg-[#A36714] transition-colors disabled:opacity-40 whitespace-nowrap"
-                >
+                  style={{ borderColor: 'rgba(186,117,23,0.5)', animation: 'rfid-glow 1.5s ease-in-out infinite' }} />
+                <button onClick={handleRfidAssociate} disabled={rfidSaving || !rfidValue}
+                  className="bg-[#BA7517] text-white rounded-xl px-4 py-2.5 text-xs font-medium hover:bg-[#A36714] transition-colors disabled:opacity-40 whitespace-nowrap">
                   {rfidSaving ? '...' : 'Associer'}
                 </button>
-                <button
-                  onClick={() => { setRfidOpen(false); setRfidValue(''); setRfidError('') }}
-                  className="w-9 h-9 rounded-xl border border-[#C4B89E] flex items-center justify-center text-base text-[#8A8275] hover:text-[#2C2A25] transition-colors flex-shrink-0 self-center"
-                >
+                <button onClick={() => { setRfidOpen(false); setRfidValue(''); setRfidError('') }}
+                  className="w-9 h-9 rounded-xl border border-[#C4B89E] flex items-center justify-center text-base text-[#8A8275] hover:text-[#2C2A25] transition-colors flex-shrink-0 self-center">
                   ×
                 </button>
               </div>
@@ -402,44 +401,23 @@ export default function FicheClient() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <Field label="Téléphone" value={form.telephone} onChange={v => setForm(f => ({ ...f, telephone: v }))} type="tel" />
-              <Field label="Email"     value={form.email}     onChange={v => setForm(f => ({ ...f, email: v }))}     type="email" />
+              <Field label="Email"     value={form.email}     onChange={v => setForm(f => ({ ...f, email: v }))} type="email" />
             </div>
             <Field label="Date d'anniversaire" value={form.date_naissance} onChange={v => setForm(f => ({ ...f, date_naissance: v }))} type="date" />
-            <Textarea
-              label="Allergies & contre-indications"
-              value={form.allergies}
+            <Textarea label="Allergies & contre-indications" value={form.allergies}
               onChange={v => setForm(f => ({ ...f, allergies: v }))}
-              placeholder="Ex : allergie aux huiles essentielles de lavande..."
-            />
-            <Textarea
-              label="Préférences massage & soins"
-              value={form.preferences_massage}
+              placeholder="Ex : allergie aux huiles essentielles de lavande..." />
+            <Textarea label="Préférences massage & soins" value={form.preferences_massage}
               onChange={v => setForm(f => ({ ...f, preferences_massage: v }))}
-              placeholder="Ex : pression forte, musique douce, huile de rose..."
-            />
-            <Textarea
-              label="Notes praticien"
-              value={form.notes_praticien}
+              placeholder="Ex : pression forte, musique douce, huile de rose..." />
+            <Textarea label="Notes praticien" value={form.notes_praticien}
               onChange={v => setForm(f => ({ ...f, notes_praticien: v }))}
-              rows={3}
-              placeholder="Notes internes non visibles par le client..."
-              accent
-            />
-
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              className="w-full bg-[#2C2A25] text-[#F7F4EE] rounded-xl py-3 text-sm font-medium tracking-wide hover:bg-[#3C3A35] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-            >
+              rows={3} placeholder="Notes internes non visibles par le client..." accent />
+            <button onClick={handleSave} disabled={saving}
+              className="w-full bg-[#2C2A25] text-[#F7F4EE] rounded-xl py-3 text-sm font-medium tracking-wide hover:bg-[#3C3A35] transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
               {saving ? (
-                <>
-                  <span className="w-4 h-4 rounded-full border-2 border-[#F7F4EE]/30 border-t-[#F7F4EE] animate-spin inline-block" />
-                  Sauvegarde...
-                </>
-              ) : saveSuccess
-                ? <span style={{ color: '#BA7517' }}>✓ Sauvegardé</span>
-                : 'Sauvegarder'
-              }
+                <><span className="w-4 h-4 rounded-full border-2 border-[#F7F4EE]/30 border-t-[#F7F4EE] animate-spin inline-block" />Sauvegarde...</>
+              ) : saveSuccess ? <span style={{ color: '#BA7517' }}>✓ Sauvegardé</span> : 'Sauvegarder'}
             </button>
           </div>
         </div>
@@ -458,27 +436,17 @@ export default function FicheClient() {
               const s = TX_STYLE[tx.type] || TX_STYLE.debit
               return (
                 <div key={tx.id || i} className="flex items-center gap-3.5 px-5 py-3.5">
-                  <div
-                    className="w-8 h-8 rounded-lg flex items-center justify-center text-xs flex-shrink-0 font-medium"
-                    style={{ background: s.bg, color: s.color }}
-                  >
-                    {s.icon}
-                  </div>
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center text-xs flex-shrink-0 font-medium"
+                    style={{ background: s.bg, color: s.color }}>{s.icon}</div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs font-medium text-[#2C2A25] truncate">
-                      {tx.description || tx.type}
-                    </p>
+                    <p className="text-xs font-medium text-[#2C2A25] truncate">{tx.description || tx.type}</p>
                     <p className="text-[10px] text-[#8A8275] mt-0.5">
                       {new Date(tx.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
                     </p>
                   </div>
                   <div className="text-right flex-shrink-0">
-                    <p className="text-sm font-semibold" style={{ color: s.color }}>
-                      {s.sign}{tx.montant?.toLocaleString('fr-FR')} DA
-                    </p>
-                    {tx.points_gagnes > 0 && (
-                      <p className="text-[9px] mt-0.5" style={{ color: '#BA7517' }}>+{tx.points_gagnes} pts</p>
-                    )}
+                    <p className="text-sm font-semibold" style={{ color: s.color }}>{s.sign}{tx.montant?.toLocaleString('fr-FR')} DA</p>
+                    {tx.points_gagnes > 0 && <p className="text-[9px] mt-0.5" style={{ color: '#BA7517' }}>+{tx.points_gagnes} pts</p>}
                   </div>
                 </div>
               )
@@ -493,44 +461,28 @@ export default function FicheClient() {
               <p className="text-[8px] tracking-[0.28em] uppercase text-[#8A8275] font-medium">Recharge rapide</p>
             </div>
             <div className="p-5 flex flex-col gap-4">
-              {/* Montants rapides */}
               <div className="grid grid-cols-4 gap-2">
                 {[2000, 5000, 10000, 20000].map(amt => (
-                  <button
-                    key={amt}
-                    onClick={() => handleRecharge(amt)}
-                    disabled={rechargeLoading}
-                    className="py-3 rounded-xl border border-[#C4B89E] text-sm font-semibold text-[#2C2A25] hover:border-[#BA7517] hover:text-[#BA7517] transition-all disabled:opacity-40 active:scale-95"
-                  >
+                  <button key={amt} onClick={() => handleRecharge(amt)} disabled={rechargeLoading}
+                    className="py-3 rounded-xl border border-[#C4B89E] text-sm font-semibold text-[#2C2A25] hover:border-[#BA7517] hover:text-[#BA7517] transition-all disabled:opacity-40 active:scale-95">
                     {amt >= 1000 ? `${amt / 1000}k` : amt}
                   </button>
                 ))}
               </div>
-
-              {/* Montant libre */}
               <div className="flex gap-2">
-                <input
-                  type="number"
-                  placeholder="Montant libre (DA)"
-                  value={rechargeAmt}
+                <input type="number" placeholder="Montant libre (DA)" value={rechargeAmt}
                   onChange={e => setRechargeAmt(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && rechargeAmt && handleRecharge(parseFloat(rechargeAmt))}
-                  className="flex-1 border border-[#C4B89E] rounded-xl px-4 py-2.5 text-sm text-[#2C2A25] bg-[#FAFAF8] outline-none focus:border-[#BA7517] focus:ring-1 focus:ring-[#BA7517]/20 transition-colors placeholder:text-[#B0A898]"
-                />
-                <button
-                  onClick={() => rechargeAmt && handleRecharge(parseFloat(rechargeAmt))}
+                  className="flex-1 border border-[#C4B89E] rounded-xl px-4 py-2.5 text-sm text-[#2C2A25] bg-[#FAFAF8] outline-none focus:border-[#BA7517] focus:ring-1 focus:ring-[#BA7517]/20 transition-colors placeholder:text-[#B0A898]" />
+                <button onClick={() => rechargeAmt && handleRecharge(parseFloat(rechargeAmt))}
                   disabled={rechargeLoading || !rechargeAmt}
-                  className="bg-[#BA7517] text-white rounded-xl px-5 py-2.5 text-sm font-medium hover:bg-[#A36714] transition-colors disabled:opacity-40 whitespace-nowrap"
-                >
+                  className="bg-[#BA7517] text-white rounded-xl px-5 py-2.5 text-sm font-medium hover:bg-[#A36714] transition-colors disabled:opacity-40 whitespace-nowrap">
                   {rechargeLoading ? '...' : 'Recharger'}
                 </button>
               </div>
-
               {rechargeSuccess && (
-                <div
-                  className="flex items-center gap-2.5 px-4 py-3 rounded-xl"
-                  style={{ background: 'rgba(186,117,23,0.08)', border: '1px solid rgba(186,117,23,0.2)' }}
-                >
+                <div className="flex items-center gap-2.5 px-4 py-3 rounded-xl"
+                  style={{ background: 'rgba(186,117,23,0.08)', border: '1px solid rgba(186,117,23,0.2)' }}>
                   <span style={{ color: '#BA7517' }}>✓</span>
                   <p className="text-sm font-medium" style={{ color: '#BA7517' }}>{rechargeSuccess}</p>
                 </div>
@@ -544,31 +496,20 @@ export default function FicheClient() {
 
       {/* ══ MODAL QR CODE ══ */}
       {qrOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-6"
-          style={{ background: 'rgba(0,0,0,0.8)' }}
-          onClick={() => setQrOpen(false)}
-        >
-          <div
-            className="bg-white rounded-2xl p-8 flex flex-col items-center gap-5 max-w-xs w-full shadow-2xl"
-            onClick={e => e.stopPropagation()}
-          >
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-6"
+          style={{ background: 'rgba(0,0,0,0.8)' }} onClick={() => setQrOpen(false)}>
+          <div className="bg-white rounded-2xl p-8 flex flex-col items-center gap-5 max-w-xs w-full shadow-2xl"
+            onClick={e => e.stopPropagation()}>
             <p className="text-[9px] tracking-[0.25em] uppercase text-[#8A8275]">QR Code carte</p>
-            {qrDataUrl && (
-              <img src={qrDataUrl} alt="QR Code" className="w-56 h-56 rounded-xl" />
-            )}
+            {qrDataUrl && <img src={qrDataUrl} alt="QR Code" className="w-56 h-56 rounded-xl" />}
             <p className="text-[10px] font-mono text-[#8A8275] text-center break-all">{carte?.uid_rfid}</p>
             <div className="flex gap-3 w-full">
-              <button
-                onClick={downloadQr}
-                className="flex-1 bg-[#BA7517] text-white rounded-xl py-2.5 text-xs font-semibold tracking-wide hover:bg-[#A36714] transition-colors"
-              >
+              <button onClick={downloadQr}
+                className="flex-1 bg-[#BA7517] text-white rounded-xl py-2.5 text-xs font-semibold tracking-wide hover:bg-[#A36714] transition-colors">
                 Télécharger
               </button>
-              <button
-                onClick={() => setQrOpen(false)}
-                className="flex-1 border border-[#C4B89E] text-[#2C2A25] rounded-xl py-2.5 text-xs font-semibold hover:border-[#BA7517] hover:text-[#BA7517] transition-colors"
-              >
+              <button onClick={() => setQrOpen(false)}
+                className="flex-1 border border-[#C4B89E] text-[#2C2A25] rounded-xl py-2.5 text-xs font-semibold hover:border-[#BA7517] hover:text-[#BA7517] transition-colors">
                 Fermer
               </button>
             </div>
