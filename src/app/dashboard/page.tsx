@@ -15,6 +15,7 @@ const NIVEAU_AVATAR: Record<string, string> = {
 export default function Dashboard() {
   const [stats, setStats] = useState({ cartes: 0, clients: 0, transactions: 0 })
   const [salonNom, setSalonNom] = useState('')
+  const [scanNotif, setScanNotif] = useState('')
   const router = useRouter()
 
   const [uid, setUid] = useState('')
@@ -44,6 +45,31 @@ export default function Dashboard() {
       setSalonNom(salon?.nom || session.user.email?.split('@')[0] || 'Salon')
     }
     init()
+
+    // ── REALTIME SCANS (téléphone → PC) ──
+    const channel = supabase
+      .channel('scans-realtime')
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'scans',
+      }, async (payload) => {
+        const uid = payload.new.uid_carte
+        const { data: carte } = await supabase
+          .from('cartes')
+          .select('*, clients(*)')
+          .eq('uid_rfid', uid)
+          .single()
+        if (carte?.clients) {
+          const nom = `${carte.clients.prenom} ${carte.clients.nom}`
+          setScanNotif(`📱 Scan — ${nom}`)
+          setTimeout(() => setScanNotif(''), 3000)
+          router.push(`/dashboard/clients/${carte.clients.id}`)
+        }
+      })
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
   }, [])
 
   const handleLogout = async () => {
@@ -147,6 +173,13 @@ export default function Dashboard() {
         }
       `}</style>
 
+      {/* Notification Realtime */}
+      {scanNotif && (
+        <div className="fixed top-4 right-4 z-50 bg-[#2C2A25] text-[#F7F4EE] px-5 py-3 rounded-2xl shadow-lg text-sm font-medium border border-[#BA7517]/40">
+          {scanNotif}
+        </div>
+      )}
+
       {/* ── DARK HERO ── */}
       <div className="bg-gradient-to-b from-[#18160F] to-[#2C2A25] border-b border-[#BA7517]/[0.18]">
         <div className="max-w-[1040px] mx-auto px-6 md:px-12 py-6 md:py-8">
@@ -199,8 +232,6 @@ export default function Dashboard() {
             <div className="flex-1 min-w-0">
               {!carte ? (
                 <div className="flex flex-col gap-2">
-
-                  {/* Titre + bouton RFID */}
                   <div className="flex items-center justify-between mb-0.5">
                     <p className="text-[8px] tracking-[0.28em] uppercase text-[#F7F4EE]/30 font-medium">
                       Scanner une carte
@@ -218,7 +249,6 @@ export default function Dashboard() {
                     </button>
                   </div>
 
-                  {/* Indicateur attente */}
                   {rfidMode && (
                     <div
                       className="flex items-center gap-2 px-3 py-2 rounded-xl"
@@ -235,7 +265,6 @@ export default function Dashboard() {
                     </div>
                   )}
 
-                  {/* Input UID */}
                   <div className="flex gap-2">
                     <input
                       ref={uidRef}
@@ -259,15 +288,11 @@ export default function Dashboard() {
                 </div>
 
               ) : (
-                /* ── FICHE CLIENT INLINE ── */
                 <div className="bg-[#F7F4EE]/[0.05] border border-[#F7F4EE]/[0.1] rounded-2xl overflow-hidden">
-
-                  {/* En-tête client */}
                   <div className="flex items-start gap-3 px-4 py-3.5 border-b border-[#F7F4EE]/[0.07]">
                     <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-xs font-semibold flex-shrink-0 mt-0.5 ${NIVEAU_AVATAR[niveau]}`}>
                       {carte.clients?.prenom?.[0]?.toUpperCase()}{carte.clients?.nom?.[0]?.toUpperCase()}
                     </div>
-
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-[#F7F4EE] truncate">
                         {carte.clients?.prenom} {carte.clients?.nom}
@@ -277,13 +302,11 @@ export default function Dashboard() {
                         {carte.clients?.telephone ? ` · ${carte.clients.telephone}` : ''}
                       </p>
                     </div>
-
                     <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
                       <p className="text-base font-light" style={{ color: '#BA7517' }}>
                         {carte.solde?.toLocaleString('fr-FR')}
                         <span className="text-[10px] text-[#F7F4EE]/30 ml-1">DA</span>
                       </p>
-                      {/* Bouton fiche complète */}
                       <button
                         onClick={() => router.push(`/dashboard/clients/${carte.clients?.id}`)}
                         className="text-[8px] tracking-[0.08em] uppercase font-semibold px-2 py-0.5 rounded-md transition-all whitespace-nowrap hover:opacity-80"
@@ -292,7 +315,6 @@ export default function Dashboard() {
                         Voir fiche →
                       </button>
                     </div>
-
                     <button
                       onClick={resetScan}
                       className="text-[#F7F4EE]/20 hover:text-[#F7F4EE]/60 transition-colors text-lg leading-none ml-1 mt-0.5 flex-shrink-0"
@@ -300,8 +322,6 @@ export default function Dashboard() {
                       ×
                     </button>
                   </div>
-
-                  {/* Débit */}
                   <div className="px-4 py-3 flex flex-col gap-2">
                     {scanSuccess && (
                       <p className="text-[11px] font-medium" style={{ color: '#BA7517' }}>✓ {scanSuccess}</p>
@@ -329,14 +349,12 @@ export default function Dashboard() {
                 </div>
               )}
             </div>
-
           </div>
         </div>
       </div>
 
       {/* ── CREAM ZONE ── */}
       <div className="max-w-[1040px] mx-auto px-6 md:px-12 pt-8 md:pt-11 pb-16 md:pb-[72px]">
-
         <button
           className="hd-fade w-full bg-[#BA7517] border border-[#BA7517]/35 rounded-[22px] px-6 py-7 md:px-10 md:py-[34px] mb-3.5 flex items-center justify-between cursor-pointer shadow-[0_8px_36px_rgba(186,117,23,0.28)] text-left hover:bg-[#A36714] hover:shadow-[0_16px_48px_rgba(186,117,23,0.5)] hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200"
           onClick={() => router.push('/dashboard/cartes/nouvelle')}
@@ -376,7 +394,6 @@ export default function Dashboard() {
             </button>
           ))}
         </div>
-
       </div>
     </div>
   )
