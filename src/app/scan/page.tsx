@@ -7,45 +7,44 @@ export default function ScanPage() {
   const [clientNom, setClientNom] = useState('')
   const [uid, setUid] = useState('')
   const scannerRef = useRef<any>(null)
-  const scannerContainerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    return () => { scannerRef.current?.stop().catch(() => {}) }
+  }, [])
 
   const startScanner = async () => {
-    const { Html5Qrcode } = await import('html5-qrcode')
     setStatus('scanning')
-
-    const scanner = new Html5Qrcode('qr-reader')
-    scannerRef.current = scanner
-
-    await scanner.start(
-      { facingMode: 'environment' },
-      { fps: 10, qrbox: { width: 250, height: 250 } },
-      async (decodedText) => {
-        await scanner.stop()
-        const uid = decodedText.split('/').pop() || decodedText
-        await handleScan(uid)
-      },
-      () => {}
-    )
+    setTimeout(async () => {
+      try {
+        const { Html5Qrcode } = await import('html5-qrcode')
+        const scanner = new Html5Qrcode('qr-reader')
+        scannerRef.current = scanner
+        await scanner.start(
+          { facingMode: 'environment' },
+          { fps: 10, qrbox: { width: 250, height: 250 } },
+          async (decodedText: string) => {
+            await scanner.stop()
+            const scannedUid = decodedText.split('/').pop() || decodedText
+            await handleScan(scannedUid)
+          },
+          () => {}
+        )
+      } catch (e) {
+        setStatus('idle')
+      }
+    }, 300)
   }
 
   const handleScan = async (scannedUid: string) => {
     setUid(scannedUid)
-
-    // Trouver le client
     const { data: carte } = await supabase
       .from('cartes')
       .select('*, clients(*)')
       .eq('uid_rfid', scannedUid)
       .single()
 
-    if (!carte) {
-      setStatus('error')
-      return
-    }
-
-    // Insérer dans la table scans pour le PC
+    if (!carte) { setStatus('error'); return }
     await supabase.from('scans').insert({ uid_carte: scannedUid })
-
     setClientNom(`${carte.clients?.prenom} ${carte.clients?.nom}`)
     setStatus('success')
   }
@@ -76,13 +75,10 @@ export default function ScanPage() {
             <p className="text-[#F7F4EE] text-center text-sm opacity-70">
               Pointez la caméra vers le QR code du client
             </p>
-            <button
-              onClick={startScanner}
-              className="w-full bg-[#BA7517] text-white rounded-2xl py-4 text-base font-medium hover:opacity-90 transition"
-            >
+            <button onClick={startScanner}
+              className="w-full bg-[#BA7517] text-white rounded-2xl py-4 text-base font-medium hover:opacity-90 transition">
               Ouvrir la caméra
             </button>
-
             <div className="w-full border-t border-[#3C3A35] pt-4">
               <p className="text-xs text-[#8A8275] text-center mb-3">ou entrer l'UID manuellement</p>
               <div className="flex gap-2">
@@ -93,10 +89,8 @@ export default function ScanPage() {
                   onKeyDown={e => e.key === 'Enter' && handleScan(uid)}
                   className="flex-1 bg-[#3C3A35] border border-[#4A4845] rounded-xl px-4 py-3 text-sm text-[#F7F4EE] outline-none focus:border-[#BA7517]"
                 />
-                <button
-                  onClick={() => handleScan(uid)}
-                  className="bg-[#BA7517] text-white rounded-xl px-4 text-sm font-medium"
-                >
+                <button onClick={() => handleScan(uid)}
+                  className="bg-[#BA7517] text-white rounded-xl px-4 text-sm font-medium">
                   OK
                 </button>
               </div>
@@ -105,10 +99,21 @@ export default function ScanPage() {
         )}
 
         {status === 'scanning' && (
-          <div className="w-full max-w-sm flex flex-col items-center gap-4">
-            <div id="qr-reader" className="w-full rounded-2xl overflow-hidden" />
+          <div className="w-full flex flex-col items-center gap-4">
+            <div
+              id="qr-reader"
+              style={{
+                width: '100%',
+                maxWidth: '400px',
+                minHeight: '300px',
+                borderRadius: '16px',
+                overflow: 'hidden',
+                background: '#1a1a1a',
+              }}
+            />
             <p className="text-[#BA7517] text-sm animate-pulse">Scan en cours...</p>
-            <button onClick={() => { scannerRef.current?.stop(); setStatus('idle') }}
+            <button
+              onClick={() => { scannerRef.current?.stop().catch(() => {}); setStatus('idle') }}
               className="text-xs text-[#8A8275] underline">
               Annuler
             </button>

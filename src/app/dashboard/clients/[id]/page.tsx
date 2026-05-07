@@ -2,6 +2,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter, useParams } from 'next/navigation'
+import QRCode from 'qrcode'
 
 const NIVEAU_COLORS: Record<string, { bg: string; text: string; border: string }> = {
   Bronze:  { bg: 'rgba(196,129,58,0.12)',  text: '#C4813A', border: 'rgba(196,129,58,0.3)'  },
@@ -49,6 +50,9 @@ export default function FicheClient() {
   const [rechargeAmt, setRechargeAmt] = useState('')
   const [rechargeLoading, setRechargeLoading] = useState(false)
   const [rechargeSuccess, setRechargeSuccess] = useState('')
+
+  const [qrOpen, setQrOpen] = useState(false)
+  const [qrDataUrl, setQrDataUrl] = useState('')
 
   useEffect(() => {
     const load = async () => {
@@ -117,6 +121,24 @@ export default function FicheClient() {
     setRfidOpen(false)
     setRfidValue('')
     setRfidSaving(false)
+  }
+
+  const openQr = async () => {
+    if (!carte?.uid_rfid) return
+    const url = `${window.location.origin}/carte/${carte.uid_rfid}`
+    const dataUrl = await QRCode.toDataURL(url, {
+      width: 300, margin: 2,
+      color: { dark: '#2C2A25', light: '#FFFFFF' },
+    })
+    setQrDataUrl(dataUrl)
+    setQrOpen(true)
+  }
+
+  const downloadQr = () => {
+    const a = document.createElement('a')
+    a.href = qrDataUrl
+    a.download = `carte-${carte?.uid_rfid}.png`
+    a.click()
   }
 
   const handleRecharge = async (amt: number) => {
@@ -309,13 +331,24 @@ export default function FicheClient() {
               }
             </div>
             {carte && !rfidOpen && (
-              <button
-                onClick={openRfid}
-                className="text-[9px] font-semibold tracking-[0.1em] uppercase px-3 py-1.5 rounded-lg border transition-colors whitespace-nowrap flex-shrink-0 hover:opacity-80"
-                style={{ borderColor: 'rgba(186,117,23,0.4)', color: '#BA7517' }}
-              >
-                {carte.uid_rfid ? 'Modifier' : 'Associer carte RFID'}
-              </button>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                {carte.uid_rfid && (
+                  <button
+                    onClick={openQr}
+                    className="text-[9px] font-semibold tracking-[0.1em] uppercase px-3 py-1.5 rounded-lg border transition-colors whitespace-nowrap hover:opacity-80"
+                    style={{ borderColor: 'rgba(186,117,23,0.4)', color: '#BA7517' }}
+                  >
+                    Voir QR code
+                  </button>
+                )}
+                <button
+                  onClick={openRfid}
+                  className="text-[9px] font-semibold tracking-[0.1em] uppercase px-3 py-1.5 rounded-lg border transition-colors whitespace-nowrap hover:opacity-80"
+                  style={{ borderColor: 'rgba(186,117,23,0.4)', color: '#BA7517' }}
+                >
+                  {carte.uid_rfid ? 'Modifier' : 'Associer carte RFID'}
+                </button>
+              </div>
             )}
           </div>
 
@@ -508,6 +541,40 @@ export default function FicheClient() {
 
         <div className="h-6" />
       </div>
+
+      {/* ══ MODAL QR CODE ══ */}
+      {qrOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-6"
+          style={{ background: 'rgba(0,0,0,0.8)' }}
+          onClick={() => setQrOpen(false)}
+        >
+          <div
+            className="bg-white rounded-2xl p-8 flex flex-col items-center gap-5 max-w-xs w-full shadow-2xl"
+            onClick={e => e.stopPropagation()}
+          >
+            <p className="text-[9px] tracking-[0.25em] uppercase text-[#8A8275]">QR Code carte</p>
+            {qrDataUrl && (
+              <img src={qrDataUrl} alt="QR Code" className="w-56 h-56 rounded-xl" />
+            )}
+            <p className="text-[10px] font-mono text-[#8A8275] text-center break-all">{carte?.uid_rfid}</p>
+            <div className="flex gap-3 w-full">
+              <button
+                onClick={downloadQr}
+                className="flex-1 bg-[#BA7517] text-white rounded-xl py-2.5 text-xs font-semibold tracking-wide hover:bg-[#A36714] transition-colors"
+              >
+                Télécharger
+              </button>
+              <button
+                onClick={() => setQrOpen(false)}
+                className="flex-1 border border-[#C4B89E] text-[#2C2A25] rounded-xl py-2.5 text-xs font-semibold hover:border-[#BA7517] hover:text-[#BA7517] transition-colors"
+              >
+                Fermer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

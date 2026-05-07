@@ -4,20 +4,20 @@ import { supabase } from '@/lib/supabase'
 import { useParams } from 'next/navigation'
 
 const NIVEAU_CONFIG: Record<string, {
-  bg: string; text: string; accent: string; badgeBg: string; label: string
+  bg: string; gradTo: string; text: string; accent: string; badgeBg: string; label: string
 }> = {
-  Bronze:  { bg: '#2C2A25',  text: '#F5C4B3', accent: '#D4915E', badgeBg: 'rgba(245,196,179,0.15)', label: 'Bronze' },
-  Argent:  { bg: '#5A5854',  text: '#F1EFE8', accent: '#C8C5BE', badgeBg: 'rgba(241,239,232,0.15)', label: 'Argent' },
-  Or:      { bg: '#BA7517',  text: '#FFF6E0', accent: '#FAC775', badgeBg: 'rgba(250,199,117,0.2)',  label: 'Or' },
-  Platine: { bg: '#2E2A5A',  text: '#CECBF6', accent: '#9C94F0', badgeBg: 'rgba(206,203,246,0.15)', label: 'Platine' },
+  Bronze:  { bg: '#2C2A25', gradTo: '#3D3228', text: '#F5C4B3', accent: '#D4915E', badgeBg: 'rgba(212,145,94,0.18)',  label: 'Bronze'  },
+  Argent:  { bg: '#4A4845', gradTo: '#5E5C58', text: '#F1EFE8', accent: '#C8C5BE', badgeBg: 'rgba(200,197,190,0.18)', label: 'Argent'  },
+  Or:      { bg: '#BA7517', gradTo: '#D4911F', text: '#FFF6E0', accent: '#FAC775', badgeBg: 'rgba(250,199,117,0.25)', label: 'Or'      },
+  Platine: { bg: '#2E2A5A', gradTo: '#3D3870', text: '#CECBF6', accent: '#9C94F0', badgeBg: 'rgba(156,148,240,0.2)',  label: 'Platine' },
 }
 
 const NEXT_LEVEL: Record<string, string | null> = {
-  Bronze: 'Argent', Argent: 'Or', Or: 'Platine', Platine: null
+  Bronze: 'Argent', Argent: 'Or', Or: 'Platine', Platine: null,
 }
 
 const LEVEL_THRESHOLD: Record<string, number> = {
-  Bronze: 1000, Argent: 3000, Or: 8000, Platine: 8000
+  Bronze: 1000, Argent: 3000, Or: 8000, Platine: 8000,
 }
 
 const PERKS: Record<string, string[]> = {
@@ -26,6 +26,9 @@ const PERKS: Record<string, string[]> = {
   Or:      ['Réduction − 10 %', 'Accès prioritaire aux réservations', 'Points cumulés à chaque visite'],
   Platine: ['Réduction − 20 %', 'Soin offert par trimestre', 'Accès prioritaire & exclusif', 'Points cumulés à chaque visite'],
 }
+
+const serif = '"Cormorant Garamond", "Cormorant", Georgia, serif'
+const sans  = 'system-ui, -apple-system, sans-serif'
 
 export default function CartePage() {
   const { uid } = useParams()
@@ -48,175 +51,232 @@ export default function CartePage() {
   }, [uid])
 
   if (loading) return (
-    <div className="min-h-screen bg-[#F7F4EE] flex items-center justify-center">
-      <div className="flex flex-col items-center gap-3">
-        <div className="w-8 h-8 rounded-full border-2 border-[#EDE8DE] border-t-[#BA7517] animate-spin" />
-        <p className="text-[9px] tracking-[0.25em] uppercase text-[#8A8275]">Chargement</p>
+    <div style={{ minHeight: '100vh', background: '#F7F4EE', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <style>{`@keyframes hdSpin { to { transform: rotate(360deg); } }`}</style>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+        <div style={{
+          width: 32, height: 32, borderRadius: '50%',
+          border: '2px solid rgba(186,117,23,0.2)', borderTopColor: '#BA7517',
+          animation: 'hdSpin 0.8s linear infinite',
+        }} />
+        <p style={{ fontSize: 9, letterSpacing: '0.25em', textTransform: 'uppercase', color: '#8A8275', fontFamily: sans }}>
+          Chargement
+        </p>
       </div>
     </div>
   )
 
   if (error) return (
-    <div className="min-h-screen bg-[#F7F4EE] flex items-center justify-center p-6">
-      <div className="text-center">
-        <div className="text-5xl mb-4 opacity-30">✦</div>
-        <p className="font-display text-2xl font-light text-[#2C2A25] mb-2">Carte introuvable</p>
-        <p className="text-sm text-[#8A8275]">Ce lien n'est associé à aucune carte.</p>
+    <div style={{ minHeight: '100vh', background: '#F7F4EE', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+      <div style={{ textAlign: 'center' }}>
+        <div style={{ fontSize: 48, marginBottom: 16, opacity: 0.25, color: '#BA7517' }}>✦</div>
+        <p style={{ fontSize: 26, fontWeight: 300, color: '#2C2A25', marginBottom: 8, fontFamily: serif }}>Carte introuvable</p>
+        <p style={{ fontSize: 14, color: '#8A8275', fontFamily: sans }}>Ce lien n'est associé à aucune carte.</p>
       </div>
     </div>
   )
 
-  const niveau = carte.niveau || 'Bronze'
-  const config = NIVEAU_CONFIG[niveau] || NIVEAU_CONFIG.Bronze
-  const maxPts = LEVEL_THRESHOLD[niveau]
-  const pct = Math.min((carte.points / maxPts) * 100, 100)
+  const niveau   = carte.niveau || 'Bronze'
+  const cfg      = NIVEAU_CONFIG[niveau] || NIVEAU_CONFIG.Bronze
+  const maxPts   = LEVEL_THRESHOLD[niveau]
+  const pct      = Math.min((carte.points / maxPts) * 100, 100)
   const prochain = NEXT_LEVEL[niveau]
-  const perks = PERKS[niveau] || PERKS.Bronze
+  const perks    = PERKS[niveau] || PERKS.Bronze
 
   return (
-    <div className="min-h-screen bg-[#F7F4EE]">
-      {/* Card visual */}
-      <div
-        className="relative overflow-hidden"
-        style={{ background: config.bg, minHeight: '280px' }}
-      >
-        {/* Decorative circles */}
-        <div className="absolute -top-16 -right-16 w-64 h-64 rounded-full opacity-[0.07]"
-          style={{ background: config.accent }} />
-        <div className="absolute -bottom-12 -left-12 w-48 h-48 rounded-full opacity-[0.07]"
-          style={{ background: config.accent }} />
-        <div className="absolute top-1/2 right-8 w-24 h-24 rounded-full opacity-[0.05]"
-          style={{ background: config.text }} />
+    <div style={{ minHeight: '100vh', background: '#F7F4EE', fontFamily: sans }}>
 
-        <div className="relative z-10 p-8 pt-10 max-w-sm mx-auto">
-          {/* Header row */}
-          <div className="flex justify-between items-start mb-10">
+      {/* ── Carte visuelle ── */}
+      <div style={{
+        background: `linear-gradient(145deg, ${cfg.bg} 0%, ${cfg.gradTo} 100%)`,
+        minHeight: 300,
+        position: 'relative',
+        overflow: 'hidden',
+      }}>
+        {/* Cercles décoratifs */}
+        <div style={{
+          position: 'absolute', top: -64, right: -64,
+          width: 256, height: 256, borderRadius: '50%',
+          background: cfg.accent, opacity: 0.09, pointerEvents: 'none',
+        }} />
+        <div style={{
+          position: 'absolute', bottom: -48, left: -48,
+          width: 192, height: 192, borderRadius: '50%',
+          background: cfg.accent, opacity: 0.06, pointerEvents: 'none',
+        }} />
+        <div style={{
+          position: 'absolute', top: '40%', right: 32,
+          width: 96, height: 96, borderRadius: '50%',
+          background: cfg.text, opacity: 0.04, pointerEvents: 'none',
+        }} />
+
+        <div style={{ position: 'relative', zIndex: 1, padding: '40px 28px 36px', maxWidth: 420, margin: '0 auto' }}>
+
+          {/* Top : logo + badge */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 40 }}>
             <div>
-              <p className="text-[9px] tracking-[0.4em] uppercase font-medium mb-1"
-                style={{ color: config.text, opacity: 0.5 }}>
+              <p style={{ fontSize: 9, letterSpacing: '0.45em', textTransform: 'uppercase', color: cfg.text, opacity: 0.5, margin: 0, fontFamily: sans }}>
                 HADIYA
               </p>
-              <p className="text-xs tracking-[0.15em]" style={{ color: config.text, opacity: 0.7 }}>
+              <p style={{ fontSize: 12, letterSpacing: '0.15em', color: cfg.text, opacity: 0.65, margin: '4px 0 0', fontFamily: sans }}>
                 Carte membre
               </p>
             </div>
-            <span
-              className="text-[9px] font-medium px-3 py-1.5 rounded-full tracking-[0.15em] uppercase"
-              style={{ background: config.badgeBg, color: config.accent, border: `1px solid ${config.accent}40` }}
-            >
-              {config.label}
+            <span style={{
+              fontSize: 9, fontWeight: 600, padding: '6px 14px', borderRadius: 999,
+              letterSpacing: '0.15em', textTransform: 'uppercase', fontFamily: sans,
+              background: cfg.badgeBg, color: cfg.accent,
+              border: `1px solid ${cfg.accent}55`,
+            }}>
+              {cfg.label}
             </span>
           </div>
 
-          {/* Name */}
-          <div className="mb-8">
-            <p className="font-display text-4xl font-light leading-tight" style={{ color: config.text }}>
+          {/* Nom client */}
+          <div style={{ marginBottom: 36 }}>
+            <p style={{ fontSize: 40, fontWeight: 300, lineHeight: 1.05, color: cfg.text, margin: 0, fontFamily: serif }}>
               {carte.clients?.prenom}
             </p>
-            <p className="font-display text-4xl font-light leading-tight" style={{ color: config.text }}>
+            <p style={{ fontSize: 40, fontWeight: 300, lineHeight: 1.05, color: cfg.text, margin: 0, fontFamily: serif }}>
               {carte.clients?.nom}
             </p>
-            <p className="text-[10px] tracking-[0.15em] mt-3 opacity-40" style={{ color: config.text }}>
-              Membre depuis {new Date(carte.created_at).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}
+            <p style={{ fontSize: 10, letterSpacing: '0.15em', marginTop: 12, color: cfg.text, opacity: 0.35, fontFamily: sans }}>
+              Membre depuis{' '}
+              {new Date(carte.created_at).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}
             </p>
           </div>
 
-          {/* Balance & Points */}
-          <div className="flex justify-between items-end">
+          {/* Solde + Points */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
             <div>
-              <p className="text-[9px] tracking-[0.25em] uppercase mb-1.5" style={{ color: config.text, opacity: 0.4 }}>
+              <p style={{ fontSize: 9, letterSpacing: '0.25em', textTransform: 'uppercase', color: cfg.text, opacity: 0.4, margin: '0 0 6px', fontFamily: sans }}>
                 Solde
               </p>
-              <p className="font-display text-3xl font-light" style={{ color: config.accent }}>
+              <p style={{ fontSize: 34, fontWeight: 300, color: cfg.accent, margin: 0, fontFamily: serif }}>
                 {carte.solde?.toLocaleString('fr-FR')}
-                <span className="text-sm font-sans opacity-60 ml-1">DA</span>
+                <span style={{ fontSize: 13, opacity: 0.65, marginLeft: 6, fontFamily: sans }}>DA</span>
               </p>
             </div>
-            <div className="text-right">
-              <p className="text-[9px] tracking-[0.25em] uppercase mb-1.5" style={{ color: config.text, opacity: 0.4 }}>
+            <div style={{ textAlign: 'right' }}>
+              <p style={{ fontSize: 9, letterSpacing: '0.25em', textTransform: 'uppercase', color: cfg.text, opacity: 0.4, margin: '0 0 6px', fontFamily: sans }}>
                 Points
               </p>
-              <p className="font-display text-3xl font-light" style={{ color: config.text }}>
-                {carte.points}
+              <p style={{ fontSize: 34, fontWeight: 300, color: cfg.text, margin: 0, fontFamily: serif }}>
+                {carte.points?.toLocaleString('fr-FR')}
               </p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Content below card */}
-      <div className="p-5 max-w-sm mx-auto flex flex-col gap-4">
+      {/* ── Contenu bas ── */}
+      <div style={{ padding: '20px 16px', maxWidth: 420, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 14 }}>
 
-        {/* Progress */}
+        {/* Progression niveau */}
         {prochain && (
-          <div className="bg-white rounded-3xl border border-[#EDE8DE] shadow-[0_2px_16px_rgba(44,42,37,0.06)] p-6">
-            <div className="flex justify-between items-center mb-3">
-              <p className="text-[9px] tracking-[0.2em] uppercase text-[#8A8275] font-medium">
+          <div style={{
+            background: 'white', borderRadius: 24,
+            border: '1px solid #EDE8DE',
+            boxShadow: '0 2px 16px rgba(44,42,37,0.06)',
+            padding: 24,
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <p style={{ fontSize: 9, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#8A8275', fontWeight: 500, margin: 0 }}>
                 Vers {prochain}
               </p>
-              <p className="text-[10px] text-[#8A8275]">{carte.points} / {maxPts} pts</p>
+              <p style={{ fontSize: 10, color: '#8A8275', margin: 0 }}>
+                {carte.points?.toLocaleString('fr-FR')} / {maxPts.toLocaleString('fr-FR')} pts
+              </p>
             </div>
-            <div className="h-1.5 bg-[#F7F4EE] rounded-full overflow-hidden">
-              <div
-                className="h-full rounded-full transition-all duration-700"
-                style={{ width: `${pct}%`, background: config.bg }}
-              />
+            <div style={{ height: 6, background: '#F0EDE5', borderRadius: 999, overflow: 'hidden' }}>
+              <div style={{
+                height: '100%', borderRadius: 999,
+                background: `linear-gradient(90deg, ${cfg.bg}, ${cfg.accent})`,
+                width: `${pct}%`,
+                transition: 'width 0.7s ease',
+              }} />
             </div>
-            <p className="text-[10px] text-[#8A8275] mt-3">
-              Encore {Math.max(maxPts - carte.points, 0).toLocaleString('fr-FR')} points pour atteindre {prochain}
+            <p style={{ fontSize: 10, color: '#8A8275', marginTop: 12, marginBottom: 0 }}>
+              Encore{' '}
+              {Math.max(maxPts - (carte.points || 0), 0).toLocaleString('fr-FR')} points pour atteindre {prochain}
             </p>
           </div>
         )}
 
-        {/* Message */}
+        {/* Message personnalisé */}
         {carte.message_perso && (
-          <div className="bg-white rounded-3xl border border-[#EDE8DE] shadow-[0_2px_16px_rgba(44,42,37,0.06)] p-6 text-center">
-            <div className="flex items-center justify-center gap-3 mb-4">
-              <div className="h-px w-8 bg-[#BA7517] opacity-30" />
-              <span className="text-[9px] tracking-[0.3em] uppercase text-[#BA7517] opacity-60 font-medium">Message</span>
-              <div className="h-px w-8 bg-[#BA7517] opacity-30" />
+          <div style={{
+            background: 'white', borderRadius: 24,
+            border: '1px solid #EDE8DE',
+            boxShadow: '0 2px 16px rgba(44,42,37,0.06)',
+            padding: 24, textAlign: 'center',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginBottom: 16 }}>
+              <div style={{ height: 1, width: 32, background: '#BA7517', opacity: 0.3 }} />
+              <span style={{ fontSize: 9, letterSpacing: '0.3em', textTransform: 'uppercase', color: '#BA7517', opacity: 0.7, fontWeight: 500 }}>
+                Message
+              </span>
+              <div style={{ height: 1, width: 32, background: '#BA7517', opacity: 0.3 }} />
             </div>
-            <p className="font-display text-lg font-light text-[#2C2A25] italic leading-relaxed">
+            <p style={{ fontSize: 19, fontWeight: 300, color: '#2C2A25', fontStyle: 'italic', lineHeight: 1.65, margin: 0, fontFamily: serif }}>
               &ldquo;{carte.message_perso}&rdquo;
             </p>
             {carte.offert_par && (
-              <p className="text-[10px] text-[#8A8275] mt-3 tracking-wider">— {carte.offert_par}</p>
+              <p style={{ fontSize: 10, color: '#8A8275', marginTop: 12, letterSpacing: '0.1em', marginBottom: 0 }}>
+                — {carte.offert_par}
+              </p>
             )}
           </div>
         )}
 
         {/* Expiration */}
         {carte.date_expiration && (
-          <div className="rounded-2xl p-4 text-center"
-            style={{ background: 'rgba(186,117,23,0.06)', border: '1px solid rgba(186,117,23,0.2)' }}>
-            <p className="text-[10px] tracking-[0.15em] text-[#BA7517]">
+          <div style={{
+            borderRadius: 16, padding: '14px 20px', textAlign: 'center',
+            background: 'rgba(186,117,23,0.06)', border: '1px solid rgba(186,117,23,0.2)',
+          }}>
+            <p style={{ fontSize: 10, letterSpacing: '0.15em', color: '#BA7517', margin: 0 }}>
               Valable jusqu'au{' '}
               {new Date(carte.date_expiration).toLocaleDateString('fr-FR', {
-                day: 'numeric', month: 'long', year: 'numeric'
+                day: 'numeric', month: 'long', year: 'numeric',
               })}
             </p>
           </div>
         )}
 
-        {/* Perks */}
-        <div className="bg-white rounded-3xl border border-[#EDE8DE] shadow-[0_2px_16px_rgba(44,42,37,0.06)] p-6">
-          <p className="text-[9px] font-medium uppercase tracking-[0.25em] text-[#8A8275] mb-4">Vos avantages</p>
-          <div className="flex flex-col gap-3">
+        {/* Avantages */}
+        <div style={{
+          background: 'white', borderRadius: 24,
+          border: '1px solid #EDE8DE',
+          boxShadow: '0 2px 16px rgba(44,42,37,0.06)',
+          padding: 24,
+        }}>
+          <p style={{ fontSize: 9, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.25em', color: '#8A8275', marginBottom: 18, marginTop: 0 }}>
+            Vos avantages
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             {perks.map((perk, i) => (
-              <div key={i} className="flex items-start gap-3">
-                <div
-                  className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
-                  style={{ background: config.bg + '15', color: config.bg }}
-                >
-                  <span className="text-[9px]">✦</span>
+              <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                <div style={{
+                  width: 22, height: 22, borderRadius: '50%',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  flexShrink: 0, marginTop: 1,
+                  background: cfg.badgeBg, color: cfg.accent,
+                  fontSize: 9,
+                }}>
+                  ✦
                 </div>
-                <p className="text-sm text-[#2C2A25] leading-relaxed">{perk}</p>
+                <p style={{ fontSize: 14, color: '#2C2A25', lineHeight: 1.55, margin: 0 }}>{perk}</p>
               </div>
             ))}
           </div>
         </div>
 
-        <p className="text-center text-[9px] tracking-[0.3em] text-[#8A8275] uppercase pb-6 opacity-40">
+        <p style={{
+          textAlign: 'center', fontSize: 9, letterSpacing: '0.3em',
+          color: '#8A8275', textTransform: 'uppercase', paddingBottom: 28,
+          opacity: 0.4, margin: 0,
+        }}>
           Hadiya · Carte digitale
         </p>
       </div>
