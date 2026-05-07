@@ -30,6 +30,8 @@ export default function Dashboard() {
   const montantRef = useRef<HTMLInputElement>(null)
   const rfidModeRef = useRef(false)
   const carteFoundRef = useRef(false)
+  const routerRef = useRef(router)
+  useEffect(() => { routerRef.current = router }, [router])
 
   useEffect(() => {
     const init = async () => {
@@ -46,28 +48,35 @@ export default function Dashboard() {
     }
     init()
 
-    // ── REALTIME SCANS (téléphone → PC) ──
+    // ── REALTIME SCANS ──
     const channel = supabase
-      .channel('scans-realtime')
+      .channel(`scans-${Math.random()}`)
       .on('postgres_changes', {
         event: 'INSERT',
         schema: 'public',
         table: 'scans',
-      }, async (payload) => {
-        const uid = payload.new.uid_carte
-        const { data: carte } = await supabase
+      }, async (payload: any) => {
+        console.log('🔴 SCAN REÇU:', payload)
+        const scannedUid = payload.new?.uid_carte
+        if (!scannedUid) return
+        const { data: carteData } = await supabase
           .from('cartes')
           .select('*, clients(*)')
-          .eq('uid_rfid', uid)
+          .eq('uid_rfid', scannedUid)
           .single()
-        if (carte?.clients) {
-          const nom = `${carte.clients.prenom} ${carte.clients.nom}`
-          setScanNotif(`📱 Scan — ${nom}`)
-          setTimeout(() => setScanNotif(''), 3000)
-          router.push(`/dashboard/clients/${carte.clients.id}`)
+        console.log('👤 CLIENT:', carteData)
+        if (carteData?.clients) {
+          const nom = `${carteData.clients.prenom} ${carteData.clients.nom}`
+          setScanNotif(`📱 ${nom}`)
+          setTimeout(() => setScanNotif(''), 4000)
+          setTimeout(() => {
+            routerRef.current.push(`/dashboard/clients/${carteData.clients.id}`)
+          }, 500)
         }
       })
-      .subscribe()
+      .subscribe((status: string) => {
+        console.log('📡 Realtime status:', status)
+      })
 
     return () => { supabase.removeChannel(channel) }
   }, [])
@@ -173,24 +182,18 @@ export default function Dashboard() {
         }
       `}</style>
 
-      {/* Notification Realtime */}
       {scanNotif && (
         <div className="fixed top-4 right-4 z-50 bg-[#2C2A25] text-[#F7F4EE] px-5 py-3 rounded-2xl shadow-lg text-sm font-medium border border-[#BA7517]/40">
           {scanNotif}
         </div>
       )}
 
-      {/* ── DARK HERO ── */}
       <div className="bg-gradient-to-b from-[#18160F] to-[#2C2A25] border-b border-[#BA7517]/[0.18]">
         <div className="max-w-[1040px] mx-auto px-6 md:px-12 py-6 md:py-8">
-
-          {/* NAV */}
           <div className="flex items-center justify-between mb-6 md:mb-8 pb-5 border-b border-[#F7F4EE]/[0.06]">
             <div className="flex items-center gap-4">
               <div className="w-6 h-px bg-[#BA7517] opacity-80" />
-              <h1 className="font-display text-2xl md:text-3xl font-light tracking-[0.5em] text-[#F7F4EE] uppercase leading-none">
-                Hadiya
-              </h1>
+              <h1 className="font-display text-2xl md:text-3xl font-light tracking-[0.5em] text-[#F7F4EE] uppercase leading-none">Hadiya</h1>
               <div className="w-6 h-px bg-[#BA7517] opacity-80" />
             </div>
             <div className="flex flex-col items-end gap-1.5">
@@ -200,21 +203,16 @@ export default function Dashboard() {
                 </div>
                 <span className="text-xs font-medium text-[#F7F4EE]/60 max-w-[120px] truncate capitalize">{salonNom}</span>
               </div>
-              <button onClick={handleLogout} className="text-[8px] tracking-[0.25em] text-[#F7F4EE] opacity-20 uppercase hover:opacity-50 transition-opacity">
-                Déconnexion
-              </button>
+              <button onClick={handleLogout} className="text-[8px] tracking-[0.25em] text-[#F7F4EE] opacity-20 uppercase hover:opacity-50 transition-opacity">Déconnexion</button>
             </div>
           </div>
 
-          {/* STATS + SCANNER */}
           <div className="flex flex-col md:flex-row gap-6 md:gap-10 md:items-start">
-
-            {/* Stats */}
             <div className="flex items-center gap-5 md:gap-7 flex-shrink-0">
               {[
                 { label: 'Cartes actives', value: stats.cartes },
-                { label: 'Clients',        value: stats.clients },
-                { label: 'Transactions',   value: stats.transactions },
+                { label: 'Clients', value: stats.clients },
+                { label: 'Transactions', value: stats.transactions },
               ].map((s, i) => (
                 <div key={s.label} className="flex items-center gap-5 md:gap-7">
                   <div className="flex flex-col">
@@ -228,65 +226,38 @@ export default function Dashboard() {
 
             <div className="hidden md:block w-px self-stretch bg-[#F7F4EE]/[0.08]" />
 
-            {/* ── SCANNER ── */}
             <div className="flex-1 min-w-0">
               {!carte ? (
                 <div className="flex flex-col gap-2">
                   <div className="flex items-center justify-between mb-0.5">
-                    <p className="text-[8px] tracking-[0.28em] uppercase text-[#F7F4EE]/30 font-medium">
-                      Scanner une carte
-                    </p>
-                    <button
-                      onClick={toggleRfidMode}
+                    <p className="text-[8px] tracking-[0.28em] uppercase text-[#F7F4EE]/30 font-medium">Scanner une carte</p>
+                    <button onClick={toggleRfidMode}
                       className="text-[8px] font-bold tracking-[0.1em] uppercase px-2.5 py-1 rounded-full transition-all whitespace-nowrap"
-                      style={{
-                        background: rfidMode ? '#BA7517' : 'transparent',
-                        color:      rfidMode ? '#ffffff' : '#BA7517',
-                        border:     rfidMode ? 'none'    : '1px solid rgba(186,117,23,0.4)',
-                      }}
-                    >
+                      style={{ background: rfidMode ? '#BA7517' : 'transparent', color: rfidMode ? '#ffffff' : '#BA7517', border: rfidMode ? 'none' : '1px solid rgba(186,117,23,0.4)' }}>
                       {rfidMode ? 'RFID ON' : 'Mode RFID'}
                     </button>
                   </div>
-
                   {rfidMode && (
-                    <div
-                      className="flex items-center gap-2 px-3 py-2 rounded-xl"
-                      style={{ background: 'rgba(186,117,23,0.07)', border: '1px solid rgba(186,117,23,0.18)' }}
-                    >
-                      <div style={{
-                        width: '6px', height: '6px', borderRadius: '50%',
-                        background: '#BA7517', flexShrink: 0,
-                        animation: 'rfid-dot-pulse 1.2s ease-in-out infinite',
-                      }} />
-                      <p className="text-[9px] tracking-[0.15em] uppercase font-medium" style={{ color: '#BA7517' }}>
-                        En attente de la carte...
-                      </p>
+                    <div className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{ background: 'rgba(186,117,23,0.07)', border: '1px solid rgba(186,117,23,0.18)' }}>
+                      <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#BA7517', flexShrink: 0, animation: 'rfid-dot-pulse 1.2s ease-in-out infinite' }} />
+                      <p className="text-[9px] tracking-[0.15em] uppercase font-medium" style={{ color: '#BA7517' }}>En attente de la carte...</p>
                     </div>
                   )}
-
                   <div className="flex gap-2">
-                    <input
-                      ref={uidRef}
+                    <input ref={uidRef}
                       placeholder={rfidMode ? 'Approcher la carte RFID...' : 'UID ou QR code...'}
-                      value={uid}
-                      onChange={e => setUid(e.target.value)}
+                      value={uid} onChange={e => setUid(e.target.value)}
                       onKeyDown={e => e.key === 'Enter' && handleScan()}
                       onBlur={handleUidBlur}
                       className="flex-1 bg-[#F7F4EE]/[0.07] border border-[#F7F4EE]/[0.1] rounded-xl px-4 py-2.5 text-sm text-[#F7F4EE] placeholder:text-[#F7F4EE]/20 outline-none focus:border-[#BA7517]/60 transition-colors"
-                      style={rfidMode ? { animation: 'rfid-border-glow 1.5s ease-in-out infinite' } : {}}
-                    />
-                    <button
-                      onClick={handleScan}
-                      disabled={scanLoading || !uid}
-                      className="bg-[#BA7517] text-white rounded-xl px-4 py-2.5 text-xs font-medium hover:bg-[#A36714] transition-colors disabled:opacity-40 whitespace-nowrap"
-                    >
+                      style={rfidMode ? { animation: 'rfid-border-glow 1.5s ease-in-out infinite' } : {}} />
+                    <button onClick={handleScan} disabled={scanLoading || !uid}
+                      className="bg-[#BA7517] text-white rounded-xl px-4 py-2.5 text-xs font-medium hover:bg-[#A36714] transition-colors disabled:opacity-40 whitespace-nowrap">
                       {scanLoading ? '...' : '→'}
                     </button>
                   </div>
                   {scanError && <p className="text-[11px] text-rose-400">{scanError}</p>}
                 </div>
-
               ) : (
                 <div className="bg-[#F7F4EE]/[0.05] border border-[#F7F4EE]/[0.1] rounded-2xl overflow-hidden">
                   <div className="flex items-start gap-3 px-4 py-3.5 border-b border-[#F7F4EE]/[0.07]">
@@ -294,54 +265,31 @@ export default function Dashboard() {
                       {carte.clients?.prenom?.[0]?.toUpperCase()}{carte.clients?.nom?.[0]?.toUpperCase()}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-[#F7F4EE] truncate">
-                        {carte.clients?.prenom} {carte.clients?.nom}
-                      </p>
-                      <p className="text-[10px] text-[#F7F4EE]/35 mt-0.5">
-                        {carte.niveau} · {carte.points} pts
-                        {carte.clients?.telephone ? ` · ${carte.clients.telephone}` : ''}
-                      </p>
+                      <p className="text-sm font-medium text-[#F7F4EE] truncate">{carte.clients?.prenom} {carte.clients?.nom}</p>
+                      <p className="text-[10px] text-[#F7F4EE]/35 mt-0.5">{carte.niveau} · {carte.points} pts{carte.clients?.telephone ? ` · ${carte.clients.telephone}` : ''}</p>
                     </div>
                     <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
                       <p className="text-base font-light" style={{ color: '#BA7517' }}>
-                        {carte.solde?.toLocaleString('fr-FR')}
-                        <span className="text-[10px] text-[#F7F4EE]/30 ml-1">DA</span>
+                        {carte.solde?.toLocaleString('fr-FR')}<span className="text-[10px] text-[#F7F4EE]/30 ml-1">DA</span>
                       </p>
-                      <button
-                        onClick={() => router.push(`/dashboard/clients/${carte.clients?.id}`)}
+                      <button onClick={() => router.push(`/dashboard/clients/${carte.clients?.id}`)}
                         className="text-[8px] tracking-[0.08em] uppercase font-semibold px-2 py-0.5 rounded-md transition-all whitespace-nowrap hover:opacity-80"
-                        style={{ color: '#BA7517', border: '1px solid rgba(186,117,23,0.35)' }}
-                      >
+                        style={{ color: '#BA7517', border: '1px solid rgba(186,117,23,0.35)' }}>
                         Voir fiche →
                       </button>
                     </div>
-                    <button
-                      onClick={resetScan}
-                      className="text-[#F7F4EE]/20 hover:text-[#F7F4EE]/60 transition-colors text-lg leading-none ml-1 mt-0.5 flex-shrink-0"
-                    >
-                      ×
-                    </button>
+                    <button onClick={resetScan} className="text-[#F7F4EE]/20 hover:text-[#F7F4EE]/60 transition-colors text-lg leading-none ml-1 mt-0.5 flex-shrink-0">×</button>
                   </div>
                   <div className="px-4 py-3 flex flex-col gap-2">
-                    {scanSuccess && (
-                      <p className="text-[11px] font-medium" style={{ color: '#BA7517' }}>✓ {scanSuccess}</p>
-                    )}
+                    {scanSuccess && <p className="text-[11px] font-medium" style={{ color: '#BA7517' }}>✓ {scanSuccess}</p>}
                     {scanError && <p className="text-[11px] text-rose-400">{scanError}</p>}
                     <div className="flex gap-2">
-                      <input
-                        ref={montantRef}
-                        type="number"
-                        placeholder="Montant à débiter (DA)"
-                        value={montant}
-                        onChange={e => { setMontant(e.target.value); setScanError(''); setScanSuccess('') }}
+                      <input ref={montantRef} type="number" placeholder="Montant à débiter (DA)"
+                        value={montant} onChange={e => { setMontant(e.target.value); setScanError(''); setScanSuccess('') }}
                         onKeyDown={e => e.key === 'Enter' && handleDebit()}
-                        className="flex-1 bg-[#F7F4EE]/[0.07] border border-[#F7F4EE]/[0.1] rounded-xl px-3 py-2 text-sm text-[#F7F4EE] placeholder:text-[#F7F4EE]/20 outline-none focus:border-[#BA7517]/60 transition-colors"
-                      />
-                      <button
-                        onClick={handleDebit}
-                        disabled={scanLoading || !montant}
-                        className="bg-[#BA7517] text-white rounded-xl px-4 py-2 text-xs font-medium hover:bg-[#A36714] transition-colors disabled:opacity-40 whitespace-nowrap"
-                      >
+                        className="flex-1 bg-[#F7F4EE]/[0.07] border border-[#F7F4EE]/[0.1] rounded-xl px-3 py-2 text-sm text-[#F7F4EE] placeholder:text-[#F7F4EE]/20 outline-none focus:border-[#BA7517]/60 transition-colors" />
+                      <button onClick={handleDebit} disabled={scanLoading || !montant}
+                        className="bg-[#BA7517] text-white rounded-xl px-4 py-2 text-xs font-medium hover:bg-[#A36714] transition-colors disabled:opacity-40 whitespace-nowrap">
                         {scanLoading ? '...' : 'Débiter'}
                       </button>
                     </div>
@@ -353,36 +301,22 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* ── CREAM ZONE ── */}
       <div className="max-w-[1040px] mx-auto px-6 md:px-12 pt-8 md:pt-11 pb-16 md:pb-[72px]">
         <button
           className="hd-fade w-full bg-[#BA7517] border border-[#BA7517]/35 rounded-[22px] px-6 py-7 md:px-10 md:py-[34px] mb-3.5 flex items-center justify-between cursor-pointer shadow-[0_8px_36px_rgba(186,117,23,0.28)] text-left hover:bg-[#A36714] hover:shadow-[0_16px_48px_rgba(186,117,23,0.5)] hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200"
-          onClick={() => router.push('/dashboard/cartes/nouvelle')}
-        >
+          onClick={() => router.push('/dashboard/cartes/nouvelle')}>
           <div>
-            <p className="font-display text-2xl md:text-[2.4rem] font-normal text-[#FFF6E0] leading-none tracking-[0.02em]">
-              Nouvelle carte cadeau
-            </p>
-            <p className="text-xs text-[#FFF6E0]/50 mt-2 tracking-[0.05em]">
-              Créer &amp; offrir une expérience unique
-            </p>
+            <p className="font-display text-2xl md:text-[2.4rem] font-normal text-[#FFF6E0] leading-none tracking-[0.02em]">Nouvelle carte cadeau</p>
+            <p className="text-xs text-[#FFF6E0]/50 mt-2 tracking-[0.05em]">Créer &amp; offrir une expérience unique</p>
           </div>
-          <div className="w-12 h-12 md:w-[60px] md:h-[60px] rounded-2xl bg-white/[0.14] border border-white/[0.22] flex items-center justify-center text-xl md:text-2xl text-[#FFF6E0] shrink-0">
-            ✦
-          </div>
+          <div className="w-12 h-12 md:w-[60px] md:h-[60px] rounded-2xl bg-white/[0.14] border border-white/[0.22] flex items-center justify-center text-xl md:text-2xl text-[#FFF6E0] shrink-0">✦</div>
         </button>
 
         <div className="grid grid-cols-2 gap-3 md:gap-3.5">
           {secondary.map((a, i) => (
-            <button
-              key={a.href}
-              className={`hd-fade hd-card text-left cursor-pointer shadow-[0_2px_20px_rgba(20,18,14,0.25)] hover:border-[#BA7517]/35 hover:-translate-y-0.5 hover:shadow-[0_12px_40px_rgba(20,18,14,0.45)] active:-translate-y-px transition-all duration-200 ${CARD_DELAYS[i]} ${
-                i === 7
-                  ? 'col-span-2 flex flex-row items-center gap-4 md:gap-5 py-6 md:py-7 px-6 md:px-9'
-                  : 'flex flex-col items-start py-6 md:py-[30px] px-5 md:px-8'
-              }`}
-              onClick={() => router.push(a.href)}
-            >
+            <button key={a.href}
+              className={`hd-fade hd-card text-left cursor-pointer shadow-[0_2px_20px_rgba(20,18,14,0.25)] hover:border-[#BA7517]/35 hover:-translate-y-0.5 hover:shadow-[0_12px_40px_rgba(20,18,14,0.45)] active:-translate-y-px transition-all duration-200 ${CARD_DELAYS[i]} ${i === 7 ? 'col-span-2 flex flex-row items-center gap-4 md:gap-5 py-6 md:py-7 px-6 md:px-9' : 'flex flex-col items-start py-6 md:py-[30px] px-5 md:px-8'}`}
+              onClick={() => router.push(a.href)}>
               <div className={`w-11 h-11 md:w-[46px] md:h-[46px] rounded-xl md:rounded-[13px] bg-[#BA7517]/[0.09] border border-[#BA7517]/[0.22] flex items-center justify-center text-[17px] md:text-[19px] text-[#BA7517] shrink-0 ${i === 7 ? '' : 'mb-4 md:mb-[22px]'}`}>
                 {a.icon}
               </div>
