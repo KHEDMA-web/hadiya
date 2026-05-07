@@ -2,6 +2,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
+import { ClientModal } from './_components/ClientModal'
 
 const CARD_DELAYS = ['[animation-delay:0.15s]','[animation-delay:0.23s]','[animation-delay:0.31s]','[animation-delay:0.39s]','[animation-delay:0.47s]','[animation-delay:0.55s]','[animation-delay:0.63s]','[animation-delay:0.71s]']
 
@@ -16,6 +17,7 @@ export default function Dashboard() {
   const [stats, setStats] = useState({ cartes: 0, clients: 0, transactions: 0 })
   const [salonNom, setSalonNom] = useState('')
   const [scanNotif, setScanNotif] = useState('')
+  const [modalCarte, setModalCarte] = useState<any>(null)
   const router = useRouter()
 
   const [uid, setUid] = useState('')
@@ -69,9 +71,7 @@ export default function Dashboard() {
           const nom = `${carteData.clients.prenom} ${carteData.clients.nom}`
           setScanNotif(`📱 ${nom}`)
           setTimeout(() => setScanNotif(''), 4000)
-          setTimeout(() => {
-            routerRef.current.push(`/dashboard/clients/${carteData.clients.id}`)
-          }, 500)
+          setModalCarte(carteData)
         }
       })
       .subscribe((status: string) => {
@@ -183,9 +183,17 @@ export default function Dashboard() {
       `}</style>
 
       {scanNotif && (
-        <div className="fixed top-4 right-4 z-50 bg-[#2C2A25] text-[#F7F4EE] px-5 py-3 rounded-2xl shadow-lg text-sm font-medium border border-[#BA7517]/40">
+        <div className="fixed top-4 right-4 z-40 bg-[#2C2A25] text-[#F7F4EE] px-5 py-3 rounded-2xl shadow-lg text-sm font-medium border border-[#BA7517]/40">
           {scanNotif}
         </div>
+      )}
+
+      {modalCarte && (
+        <ClientModal
+          carteData={modalCarte}
+          onClose={() => setModalCarte(null)}
+          onNavigate={(id) => { setModalCarte(null); router.push(`/dashboard/clients/${id}`) }}
+        />
       )}
 
       <div className="bg-gradient-to-b from-[#18160F] to-[#2C2A25] border-b border-[#BA7517]/[0.18]">
@@ -272,7 +280,7 @@ export default function Dashboard() {
                       <p className="text-base font-light" style={{ color: '#BA7517' }}>
                         {carte.solde?.toLocaleString('fr-FR')}<span className="text-[10px] text-[#F7F4EE]/30 ml-1">DA</span>
                       </p>
-                      <button onClick={() => router.push(`/dashboard/clients/${carte.clients?.id}`)}
+                      <button onClick={() => setModalCarte(carte)}
                         className="text-[8px] tracking-[0.08em] uppercase font-semibold px-2 py-0.5 rounded-md transition-all whitespace-nowrap hover:opacity-80"
                         style={{ color: '#BA7517', border: '1px solid rgba(186,117,23,0.35)' }}>
                         Voir fiche →
