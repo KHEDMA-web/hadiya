@@ -283,7 +283,6 @@ export default function Produits() {
                     <p className="text-[10px] text-[#8A8275] uppercase tracking-wide">Stock</p>
                     <p className={`text-xs font-semibold ${status === 'rupture' ? 'text-rose-500' : status === 'faible' ? 'text-orange-500' : 'text-[#2C2A25]'}`}>
                       {p.stock_actuel ?? 0} {p.stock_unite ?? 'unité'}
-                      <span className="text-[#8A8275] font-normal"> / min {p.stock_minimum ?? 5}</span>
                     </p>
                   </div>
 
