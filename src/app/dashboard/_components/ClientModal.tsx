@@ -65,7 +65,7 @@ export function ClientModal({ carteData, onClose, onNavigate }: {
     const init = async () => {
       const { data: { session } } = await supabase.auth.getSession()
       if (session) {
-        const cfg = await getConfigFidelite(session.user.id)
+        const cfg = await getConfigFidelite(session.user.email || '')
         setConfig(cfg)
       }
       supabase.from('menu_items').select('*').eq('categorie', 'soin').order('nom')

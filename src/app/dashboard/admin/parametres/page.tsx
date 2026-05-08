@@ -9,10 +9,8 @@ type Salon = {
   telephone: string | null
   adresse: string | null
   wilaya: string | null
-  email_contact: string | null
+  email: string | null
   whatsapp: string | null
-  devise: string
-  timezone: string
   abonnement: string | null
   logo_url: string | null
   fidelite_actif: boolean
@@ -47,15 +45,16 @@ export default function Parametres() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
-  const [userId, setUserId] = useState('')
+  const [userEmail, setUserEmail] = useState('')
   const [activeSection, setActiveSection] = useState<'salon' | 'fidelite' | 'abonnement' | 'notifications' | 'securite'>('salon')
 
   useEffect(() => {
     const init = async () => {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) { router.push('/login'); return }
-      setUserId(session.user.id)
-      const { data } = await supabase.from('salons').select('*').eq('user_id', session.user.id).single()
+      const email = session.user.email || ''
+      setUserEmail(email)
+      const { data } = await supabase.from('salons').select('*').eq('email', email).single()
       if (data) setSalon({
         ...data,
         fidelite_actif:   data.fidelite_actif   ?? true,
@@ -77,12 +76,11 @@ export default function Parametres() {
 
     if (activeSection === 'salon') {
       payload = {
-        nom:           salon.nom,
-        telephone:     salon.telephone     || null,
-        adresse:       salon.adresse       || null,
-        wilaya:        salon.wilaya        || null,
-        email_contact: salon.email_contact || null,
-        whatsapp:      salon.whatsapp      || null,
+        nom:       salon.nom,
+        telephone: salon.telephone || null,
+        adresse:   salon.adresse   || null,
+        wilaya:    salon.wilaya    || null,
+        whatsapp:  salon.whatsapp  || null,
       }
     } else if (activeSection === 'fidelite') {
       payload = {
@@ -97,7 +95,7 @@ export default function Parametres() {
     if (salon.id) {
       await supabase.from('salons').update(payload).eq('id', salon.id)
     } else {
-      await supabase.from('salons').insert({ ...payload, user_id: userId })
+      await supabase.from('salons').insert({ ...payload, email: userEmail })
     }
 
     setSaving(false)
@@ -144,9 +142,7 @@ export default function Parametres() {
 
       <div className="bg-[#2C2A25] px-6 py-4 flex items-center gap-4 shadow-lg">
         <button onClick={() => router.push('/dashboard/admin')}
-          className="w-9 h-9 rounded-full border border-[#4A4840] flex items-center justify-center text-[#F7F4EE] opacity-70 hover:opacity-100 hover:border-[#BA7517] transition-all text-sm flex-shrink-0">
-          ←
-        </button>
+          className="w-9 h-9 rounded-full border border-[#4A4840] flex items-center justify-center text-[#F7F4EE] opacity-70 hover:opacity-100 hover:border-[#BA7517] transition-all text-sm flex-shrink-0">←</button>
         <div>
           <h1 className="text-base font-medium text-[#F7F4EE]">Paramètres</h1>
           <p className="text-xs text-[#BA7517]">Configuration du salon</p>
@@ -190,7 +186,6 @@ export default function Parametres() {
                   <Field label="Nom du salon *" value={salon.nom || ''} onChange={v => setSalon(s => ({ ...s, nom: v }))} placeholder="Ex : Spa Lumière" />
                   <Field label="Téléphone" value={salon.telephone || ''} onChange={v => setSalon(s => ({ ...s, telephone: v }))} placeholder="Ex : 0555 123 456" type="tel" />
                   <Field label="WhatsApp" value={salon.whatsapp || ''} onChange={v => setSalon(s => ({ ...s, whatsapp: v }))} placeholder="Ex : +213 555 123 456" type="tel" />
-                  <Field label="Email de contact" value={salon.email_contact || ''} onChange={v => setSalon(s => ({ ...s, email_contact: v }))} placeholder="contact@salon.dz" type="email" />
                 </div>
                 <div className="bg-white border border-[#C4B89E] rounded-2xl p-6 shadow-md flex flex-col gap-4">
                   <div className="flex items-center gap-2 mb-1">
@@ -219,8 +214,7 @@ export default function Parametres() {
                       <p className="text-sm font-semibold text-[#2C2A25]">Programme de fidélité</p>
                       <p className="text-[11px] text-[#8A8275] mt-0.5">Activer ou désactiver pour tous les clients</p>
                     </div>
-                    <button
-                      onClick={() => setSalon(s => ({ ...s, fidelite_actif: !s.fidelite_actif }))}
+                    <button onClick={() => setSalon(s => ({ ...s, fidelite_actif: !s.fidelite_actif }))}
                       className="relative w-12 h-6 rounded-full transition-all duration-300 flex-shrink-0"
                       style={{ background: salon.fidelite_actif ? '#BA7517' : '#C4B89E' }}>
                       <div className="absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-all duration-300"
@@ -301,9 +295,9 @@ export default function Parametres() {
                     <div className="bg-[#2C2A25] rounded-2xl p-5 flex flex-col gap-2">
                       <p className="text-[9px] tracking-[0.2em] uppercase text-[#F7F4EE]/40 mb-1">Résumé du programme</p>
                       {[
-                        { niveau: 'Bronze',  pts: '0',                             color: '#C4813A' },
-                        { niveau: 'Argent',  pts: `${salon.seuil_argent ?? 500}`,  color: '#8A8275' },
-                        { niveau: 'Or',      pts: `${salon.seuil_or ?? 1500}`,     color: '#BA7517' },
+                        { niveau: 'Bronze',  pts: '0',                              color: '#C4813A' },
+                        { niveau: 'Argent',  pts: `${salon.seuil_argent ?? 500}`,   color: '#8A8275' },
+                        { niveau: 'Or',      pts: `${salon.seuil_or ?? 1500}`,      color: '#BA7517' },
                         { niveau: 'Platine', pts: `${salon.seuil_platine ?? 3000}`, color: '#7C6FAE' },
                       ].map(({ niveau, pts, color }) => (
                         <div key={niveau} className="flex items-center justify-between">
@@ -388,9 +382,7 @@ export default function Parametres() {
                     </div>
                   </div>
                 ))}
-                <p className="text-[10px] text-[#8A8275] mt-1">
-                  Les automatisations WhatsApp nécessitent la configuration n8n.
-                </p>
+                <p className="text-[10px] text-[#8A8275] mt-1">Les automatisations WhatsApp nécessitent la configuration n8n.</p>
               </div>
             )}
 

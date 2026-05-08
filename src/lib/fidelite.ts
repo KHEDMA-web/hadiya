@@ -16,11 +16,11 @@ export const DEFAULT_CONFIG: ConfigFidelite = {
   seuil_platine:    3000,
 }
 
-export async function getConfigFidelite(userId: string): Promise<ConfigFidelite> {
+export async function getConfigFidelite(userEmail: string): Promise<ConfigFidelite> {
   const { data } = await supabase
     .from('salons')
     .select('fidelite_actif, points_par_100da, seuil_argent, seuil_or, seuil_platine')
-    .eq('user_id', userId)
+    .eq('email', userEmail)
     .single()
   if (!data) return DEFAULT_CONFIG
   return {

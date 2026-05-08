@@ -54,7 +54,7 @@ export default function FicheClient() {
       // Charge la config fidélité du salon
       const { data: { session } } = await supabase.auth.getSession()
       if (session) {
-        const cfg = await getConfigFidelite(session.user.id)
+        const cfg = await getConfigFidelite(session.user.email || '')
         setConfig(cfg)
       }
 
