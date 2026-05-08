@@ -45,6 +45,7 @@ export default function Parametres() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
   const [userEmail, setUserEmail] = useState('')
   const [activeSection, setActiveSection] = useState<'salon' | 'fidelite' | 'abonnement' | 'notifications' | 'securite'>('salon')
 
@@ -71,6 +72,7 @@ export default function Parametres() {
   const handleSave = async () => {
     setSaving(true)
     setSaved(false)
+    setSaveError(null)
 
     let payload: any = {}
 
@@ -92,15 +94,22 @@ export default function Parametres() {
       }
     }
 
+    let error: any = null
     if (salon.id) {
-      await supabase.from('salons').update(payload).eq('id', salon.id)
+      const result = await supabase.from('salons').update(payload).eq('id', salon.id)
+      error = result.error
     } else {
-      await supabase.from('salons').insert({ ...payload, email: userEmail })
+      const result = await supabase.from('salons').insert({ ...payload, email: userEmail })
+      error = result.error
     }
 
     setSaving(false)
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2500)
+    if (error) {
+      setSaveError(error.message || 'Erreur lors de la sauvegarde')
+    } else {
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2500)
+    }
   }
 
   const Field = ({ label, value, onChange, placeholder, type = 'text' }: {
@@ -148,16 +157,21 @@ export default function Parametres() {
           <p className="text-xs text-[#BA7517]">Configuration du salon</p>
         </div>
         {showSave && (
-          <button onClick={handleSave} disabled={saving}
-            className="ml-auto flex items-center gap-2 bg-[#BA7517] text-white rounded-xl px-4 py-2 text-xs font-medium hover:bg-[#A36714] transition-colors disabled:opacity-50">
-            {saved ? '✓ Sauvegardé' : saving ? 'Sauvegarde...' : 'Sauvegarder'}
-          </button>
+          <div className="ml-auto flex flex-col items-end gap-1">
+            <button onClick={handleSave} disabled={saving}
+              className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-medium transition-colors disabled:opacity-50 ${saveError ? 'bg-rose-500 text-white hover:bg-rose-600' : 'bg-[#BA7517] text-white hover:bg-[#A36714]'}`}>
+              {saved ? '✓ Sauvegardé' : saving ? 'Sauvegarde...' : saveError ? '✗ Erreur' : 'Sauvegarder'}
+            </button>
+            {saveError && (
+              <p className="text-[10px] text-rose-400 max-w-[160px] text-right">{saveError}</p>
+            )}
+          </div>
         )}
       </div>
 
       <div className="bg-[#2C2A25] px-6 pb-4 flex gap-2 overflow-x-auto">
         {tabs.map(t => (
-          <button key={t.id} onClick={() => { setActiveSection(t.id); setSaved(false) }}
+          <button key={t.id} onClick={() => { setActiveSection(t.id); setSaved(false); setSaveError(null) }}
             className={`px-4 py-2 rounded-xl text-xs font-medium whitespace-nowrap transition-all flex-shrink-0 ${
               activeSection === t.id
                 ? 'bg-[#BA7517] text-white shadow-[0_2px_8px_rgba(186,117,23,0.3)]'
@@ -167,6 +181,7 @@ export default function Parametres() {
           </button>
         ))}
       </div>
+
 
       <div className="p-6 max-w-lg mx-auto flex flex-col gap-5">
         {loading ? (
