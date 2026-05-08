@@ -72,28 +72,34 @@ export default function Parametres() {
   const handleSave = async () => {
     setSaving(true)
     setSaved(false)
-    const payload: any = {
-      nom:           salon.nom,
-      telephone:     salon.telephone     || null,
-      adresse:       salon.adresse       || null,
-      wilaya:        salon.wilaya        || null,
-      email_contact: salon.email_contact || null,
-      whatsapp:      salon.whatsapp      || null,
-    }
-    if (activeSection === 'fidelite') {
-      Object.assign(payload, {
+
+    let payload: any = {}
+
+    if (activeSection === 'salon') {
+      payload = {
+        nom:           salon.nom,
+        telephone:     salon.telephone     || null,
+        adresse:       salon.adresse       || null,
+        wilaya:        salon.wilaya        || null,
+        email_contact: salon.email_contact || null,
+        whatsapp:      salon.whatsapp      || null,
+      }
+    } else if (activeSection === 'fidelite') {
+      payload = {
         fidelite_actif:   salon.fidelite_actif,
         points_par_100da: salon.points_par_100da,
         seuil_argent:     salon.seuil_argent,
         seuil_or:         salon.seuil_or,
         seuil_platine:    salon.seuil_platine,
-      })
+      }
     }
+
     if (salon.id) {
       await supabase.from('salons').update(payload).eq('id', salon.id)
     } else {
       await supabase.from('salons').insert({ ...payload, user_id: userId })
     }
+
     setSaving(false)
     setSaved(true)
     setTimeout(() => setSaved(false), 2500)
@@ -130,15 +136,12 @@ export default function Parametres() {
   ] as const
 
   const showSave = activeSection === 'salon' || activeSection === 'fidelite'
-
-  // Preview du taux
   const taux = salon.points_par_100da ?? 2
   const valeurPoint = taux > 0 ? (100 / taux).toFixed(0) : '—'
 
   return (
     <div className="min-h-screen bg-[#E8E2D5]">
 
-      {/* Header */}
       <div className="bg-[#2C2A25] px-6 py-4 flex items-center gap-4 shadow-lg">
         <button onClick={() => router.push('/dashboard/admin')}
           className="w-9 h-9 rounded-full border border-[#4A4840] flex items-center justify-center text-[#F7F4EE] opacity-70 hover:opacity-100 hover:border-[#BA7517] transition-all text-sm flex-shrink-0">
@@ -156,10 +159,9 @@ export default function Parametres() {
         )}
       </div>
 
-      {/* Tabs */}
       <div className="bg-[#2C2A25] px-6 pb-4 flex gap-2 overflow-x-auto">
         {tabs.map(t => (
-          <button key={t.id} onClick={() => setActiveSection(t.id)}
+          <button key={t.id} onClick={() => { setActiveSection(t.id); setSaved(false) }}
             className={`px-4 py-2 rounded-xl text-xs font-medium whitespace-nowrap transition-all flex-shrink-0 ${
               activeSection === t.id
                 ? 'bg-[#BA7517] text-white shadow-[0_2px_8px_rgba(186,117,23,0.3)]'
@@ -177,7 +179,7 @@ export default function Parametres() {
           </div>
         ) : (
           <>
-            {/* ── SALON ── */}
+            {/* SALON */}
             {activeSection === 'salon' && (
               <>
                 <div className="bg-white border border-[#C4B89E] rounded-2xl p-6 shadow-md flex flex-col gap-4">
@@ -208,11 +210,9 @@ export default function Parametres() {
               </>
             )}
 
-            {/* ── FIDÉLITÉ ── */}
+            {/* FIDÉLITÉ */}
             {activeSection === 'fidelite' && (
               <div className="flex flex-col gap-4">
-
-                {/* Activer / désactiver */}
                 <div className="bg-white border border-[#C4B89E] rounded-2xl p-6 shadow-md">
                   <div className="flex items-center justify-between">
                     <div>
@@ -222,8 +222,7 @@ export default function Parametres() {
                     <button
                       onClick={() => setSalon(s => ({ ...s, fidelite_actif: !s.fidelite_actif }))}
                       className="relative w-12 h-6 rounded-full transition-all duration-300 flex-shrink-0"
-                      style={{ background: salon.fidelite_actif ? '#BA7517' : '#C4B89E' }}
-                    >
+                      style={{ background: salon.fidelite_actif ? '#BA7517' : '#C4B89E' }}>
                       <div className="absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-all duration-300"
                         style={{ left: salon.fidelite_actif ? '28px' : '4px' }} />
                     </button>
@@ -232,7 +231,6 @@ export default function Parametres() {
 
                 {salon.fidelite_actif && (
                   <>
-                    {/* Taux de points */}
                     <div className="bg-white border border-[#C4B89E] rounded-2xl p-6 shadow-md flex flex-col gap-4">
                       <div className="flex items-center gap-2 mb-1">
                         <div className="w-1 h-5 bg-[#BA7517] rounded-full" />
@@ -245,7 +243,6 @@ export default function Parametres() {
                         onChange={v => setSalon(s => ({ ...s, points_par_100da: v }))}
                         min={1}
                       />
-                      {/* Preview */}
                       <div className="grid grid-cols-3 gap-2 mt-1">
                         {[1000, 5000, 10000].map(da => (
                           <div key={da} className="flex flex-col items-center p-3 rounded-xl border border-[#E8E2D5] bg-[#F7F4EE]">
@@ -258,14 +255,12 @@ export default function Parametres() {
                       </div>
                     </div>
 
-                    {/* Seuils des niveaux */}
                     <div className="bg-white border border-[#C4B89E] rounded-2xl p-6 shadow-md flex flex-col gap-4">
                       <div className="flex items-center gap-2 mb-1">
                         <div className="w-1 h-5 bg-[#BA7517] rounded-full" />
                         <p className="text-xs font-semibold text-[#2C2A25] uppercase tracking-wider">Seuils des niveaux</p>
                       </div>
 
-                      {/* Bronze — toujours 0, affiché en lecture seule */}
                       <div className="flex items-center justify-between py-3 border border-[#E8E2D5] rounded-xl px-4"
                         style={{ background: 'rgba(196,129,58,0.05)' }}>
                         <div className="flex items-center gap-2">
@@ -284,24 +279,17 @@ export default function Parametres() {
                         <div key={key} className="flex items-center justify-between gap-4 py-3 border border-[#E8E2D5] rounded-xl px-4"
                           style={{ background: bg }}>
                           <span className="text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide flex-shrink-0"
-                            style={{ background: `${color}20`, color }}>
-                            {label}
-                          </span>
+                            style={{ background: `${color}20`, color }}>{label}</span>
                           <div className="flex items-center gap-2 flex-1 justify-end">
                             <p className="text-[10px] text-[#8A8275] whitespace-nowrap">À partir de</p>
-                            <input
-                              type="number"
-                              value={(salon as any)[key] ?? 0}
-                              min={1}
+                            <input type="number" value={(salon as any)[key] ?? 0} min={1}
                               onChange={e => setSalon(s => ({ ...s, [key]: parseInt(e.target.value) || 0 }))}
-                              className="w-24 border border-[#C4B89E] rounded-lg px-3 py-1.5 text-sm text-[#2C2A25] outline-none focus:border-[#BA7517] text-right bg-white"
-                            />
+                              className="w-24 border border-[#C4B89E] rounded-lg px-3 py-1.5 text-sm text-[#2C2A25] outline-none focus:border-[#BA7517] text-right bg-white" />
                             <p className="text-[10px] text-[#8A8275]">pts</p>
                           </div>
                         </div>
                       ))}
 
-                      {/* Validation ordre */}
                       {(salon.seuil_argent ?? 0) >= (salon.seuil_or ?? 0) && (
                         <p className="text-[11px] text-rose-500">⚠ Le seuil Argent doit être inférieur au seuil Or</p>
                       )}
@@ -310,11 +298,10 @@ export default function Parametres() {
                       )}
                     </div>
 
-                    {/* Résumé */}
                     <div className="bg-[#2C2A25] rounded-2xl p-5 flex flex-col gap-2">
                       <p className="text-[9px] tracking-[0.2em] uppercase text-[#F7F4EE]/40 mb-1">Résumé du programme</p>
                       {[
-                        { niveau: 'Bronze',  pts: '0',                          color: '#C4813A' },
+                        { niveau: 'Bronze',  pts: '0',                             color: '#C4813A' },
                         { niveau: 'Argent',  pts: `${salon.seuil_argent ?? 500}`,  color: '#8A8275' },
                         { niveau: 'Or',      pts: `${salon.seuil_or ?? 1500}`,     color: '#BA7517' },
                         { niveau: 'Platine', pts: `${salon.seuil_platine ?? 3000}`, color: '#7C6FAE' },
@@ -335,7 +322,7 @@ export default function Parametres() {
               </div>
             )}
 
-            {/* ── ABONNEMENT ── */}
+            {/* ABONNEMENT */}
             {activeSection === 'abonnement' && (
               <div className="flex flex-col gap-3">
                 <div className="bg-white border border-[#C4B89E] rounded-2xl p-5 shadow-md">
@@ -351,9 +338,7 @@ export default function Parametres() {
                       <p className="text-[10px] text-[#8A8275]">Renouvellement le 1er du mois</p>
                     </div>
                     <span className="ml-auto text-[9px] px-2 py-0.5 rounded-lg uppercase tracking-wide font-medium"
-                      style={{ background: 'rgba(16,185,129,0.1)', color: '#10B981', border: '1px solid rgba(16,185,129,0.2)' }}>
-                      Actif
-                    </span>
+                      style={{ background: 'rgba(16,185,129,0.1)', color: '#10B981', border: '1px solid rgba(16,185,129,0.2)' }}>Actif</span>
                   </div>
                 </div>
                 {ABONNEMENTS.map(ab => (
@@ -378,7 +363,7 @@ export default function Parametres() {
               </div>
             )}
 
-            {/* ── NOTIFICATIONS ── */}
+            {/* NOTIFICATIONS */}
             {activeSection === 'notifications' && (
               <div className="bg-white border border-[#C4B89E] rounded-2xl p-6 shadow-md flex flex-col gap-4">
                 <div className="flex items-center gap-2 mb-1">
@@ -409,7 +394,7 @@ export default function Parametres() {
               </div>
             )}
 
-            {/* ── SECURITE ── */}
+            {/* SECURITE */}
             {activeSection === 'securite' && (
               <div className="flex flex-col gap-4">
                 <div className="bg-white border border-[#C4B89E] rounded-2xl p-6 shadow-md flex flex-col gap-4">
@@ -418,9 +403,9 @@ export default function Parametres() {
                     <p className="text-xs font-semibold text-[#2C2A25] uppercase tracking-wider">Accès & sécurité</p>
                   </div>
                   {[
-                    { label: 'Changer le mot de passe', sub: 'Modifier le mot de passe du compte',    action: 'Modifier'    },
-                    { label: 'PIN de caisse',            sub: 'Code PIN pour déverrouiller la caisse', action: 'Configurer'  },
-                    { label: 'Sessions actives',         sub: '1 session active · Alger',              action: 'Voir'        },
+                    { label: 'Changer le mot de passe', sub: 'Modifier le mot de passe du compte',    action: 'Modifier'   },
+                    { label: 'PIN de caisse',            sub: 'Code PIN pour déverrouiller la caisse', action: 'Configurer' },
+                    { label: 'Sessions actives',         sub: '1 session active · Alger',              action: 'Voir'       },
                   ].map(item => (
                     <div key={item.label} className="flex items-center justify-between py-3 border-b border-[#EDE8DE] last:border-0">
                       <div>
@@ -428,9 +413,7 @@ export default function Parametres() {
                         <p className="text-[10px] text-[#8A8275] mt-0.5">{item.sub}</p>
                       </div>
                       <button className="text-[10px] font-medium uppercase tracking-wide transition-colors hover:opacity-70"
-                        style={{ color: '#BA7517' }}>
-                        {item.action}
-                      </button>
+                        style={{ color: '#BA7517' }}>{item.action}</button>
                     </div>
                   ))}
                 </div>
