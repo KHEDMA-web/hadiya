@@ -237,31 +237,27 @@ export default function Dashboard() {
             <div className="flex-1 min-w-0">
               {!carte ? (
                 <div className="flex flex-col gap-2">
-                  <div className="flex items-center justify-between mb-0.5">
-                    <p className="text-[8px] tracking-[0.28em] uppercase text-[#F7F4EE]/30 font-medium">Scanner une carte</p>
-                    <button onClick={toggleRfidMode}
-                      className="text-[8px] font-bold tracking-[0.1em] uppercase px-2.5 py-1 rounded-full transition-all whitespace-nowrap"
-                      style={{ background: rfidMode ? '#BA7517' : 'transparent', color: rfidMode ? '#ffffff' : '#BA7517', border: rfidMode ? 'none' : '1px solid rgba(186,117,23,0.4)' }}>
-                      {rfidMode ? 'RFID ON' : 'Mode RFID'}
-                    </button>
-                  </div>
+                  <p className="text-[8px] tracking-[0.28em] uppercase text-[#F7F4EE]/30 font-medium mb-1.5">Scanner RFID</p>
                   {rfidMode && (
-                    <div className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{ background: 'rgba(186,117,23,0.07)', border: '1px solid rgba(186,117,23,0.18)' }}>
+                    <div className="flex items-center gap-2 px-3 py-2 rounded-xl mb-1" style={{ background: 'rgba(186,117,23,0.07)', border: '1px solid rgba(186,117,23,0.18)' }}>
                       <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#BA7517', flexShrink: 0, animation: 'rfid-dot-pulse 1.2s ease-in-out infinite' }} />
                       <p className="text-[9px] tracking-[0.15em] uppercase font-medium" style={{ color: '#BA7517' }}>En attente de la carte...</p>
                     </div>
                   )}
                   <div className="flex gap-2">
                     <input ref={uidRef}
-                      placeholder={rfidMode ? 'Approcher la carte RFID...' : 'UID ou QR code...'}
+                      placeholder="Approcher la carte RFID..."
                       value={uid} onChange={e => setUid(e.target.value)}
                       onKeyDown={e => e.key === 'Enter' && handleScan()}
                       onBlur={handleUidBlur}
                       className="flex-1 bg-[#F7F4EE]/[0.07] border border-[#F7F4EE]/[0.1] rounded-xl px-4 py-2.5 text-sm text-[#F7F4EE] placeholder:text-[#F7F4EE]/20 outline-none focus:border-[#BA7517]/60 transition-colors"
                       style={rfidMode ? { animation: 'rfid-border-glow 1.5s ease-in-out infinite' } : {}} />
-                    <button onClick={handleScan} disabled={scanLoading || !uid}
-                      className="bg-[#BA7517] text-white rounded-xl px-4 py-2.5 text-xs font-medium hover:bg-[#A36714] transition-colors disabled:opacity-40 whitespace-nowrap">
-                      {scanLoading ? '...' : '→'}
+                    <button
+                      onClick={uid ? handleScan : toggleRfidMode}
+                      disabled={scanLoading}
+                      className="bg-[#BA7517] text-white rounded-xl px-4 py-2.5 text-sm font-medium hover:bg-[#A36714] transition-colors disabled:opacity-40 whitespace-nowrap"
+                      style={rfidMode && !uid ? { animation: 'rfid-dot-pulse 1.2s ease-in-out infinite' } : {}}>
+                      {scanLoading ? '...' : uid ? '→' : '←'}
                     </button>
                   </div>
                   {scanError && <p className="text-[11px] text-rose-400">{scanError}</p>}
