@@ -3,6 +3,7 @@ import { useEffect, useState, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter, useParams } from 'next/navigation'
 import QRCode from 'qrcode'
+import { getConfigFidelite, getNiveau, calcPoints, getProgressionNiveau, DEFAULT_CONFIG, type ConfigFidelite } from '@/lib/fidelite'
 
 const NIVEAU_COLORS: Record<string, { bg: string; text: string; border: string }> = {
   Bronze:  { bg: 'rgba(196,129,58,0.12)',  text: '#C4813A', border: 'rgba(196,129,58,0.3)'  },
@@ -11,25 +12,10 @@ const NIVEAU_COLORS: Record<string, { bg: string; text: string; border: string }
   Platine: { bg: 'rgba(124,111,174,0.12)', text: '#7C6FAE', border: 'rgba(124,111,174,0.3)' },
 }
 
-const NIVEAU_RANGE: Record<string, { min: number; max: number; next: string | null }> = {
-  Bronze:  { min: 0,    max: 500,  next: 'Argent'  },
-  Argent:  { min: 500,  max: 1500, next: 'Or'      },
-  Or:      { min: 1500, max: 3000, next: 'Platine'  },
-  Platine: { min: 3000, max: 3000, next: null        },
-}
-
 const TX_STYLE: Record<string, { color: string; bg: string; sign: string; icon: string }> = {
   debit:    { color: '#EF4444', bg: 'rgba(239,68,68,0.08)',   sign: '−', icon: '↓' },
   recharge: { color: '#10B981', bg: 'rgba(16,185,129,0.08)',  sign: '+', icon: '↑' },
   cadeau:   { color: '#BA7517', bg: 'rgba(186,117,23,0.08)',  sign: '+', icon: '✦' },
-}
-
-// ── Calcule le bon niveau selon les points ──
-function getNiveau(points: number): string {
-  if (points >= 3000) return 'Platine'
-  if (points >= 1500) return 'Or'
-  if (points >= 500)  return 'Argent'
-  return 'Bronze'
 }
 
 export default function FicheClient() {
@@ -41,6 +27,7 @@ export default function FicheClient() {
   const [carte, setCarte] = useState<any>(null)
   const [transactions, setTransactions] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [config, setConfig] = useState<ConfigFidelite>(DEFAULT_CONFIG)
 
   const [form, setForm] = useState({
     prenom: '', nom: '', telephone: '', email: '',
@@ -64,6 +51,13 @@ export default function FicheClient() {
 
   useEffect(() => {
     const load = async () => {
+      // Charge la config fidélité du salon
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session) {
+        const cfg = await getConfigFidelite(session.user.id)
+        setConfig(cfg)
+      }
+
       const { data: clientData } = await supabase
         .from('clients').select('*').eq('id', clientId).single()
       if (!clientData) { setLoading(false); return }
@@ -85,8 +79,8 @@ export default function FicheClient() {
         .order('created_at', { ascending: false }).limit(1).maybeSingle()
 
       if (carteData) {
-        // ── Corrige le niveau au chargement si nécessaire ──
-        const bonNiveau = getNiveau(carteData.points || 0)
+        // Corrige le niveau au chargement si nécessaire
+        const bonNiveau = getNiveau(carteData.points || 0, config)
         if (bonNiveau !== carteData.niveau) {
           await supabase.from('cartes').update({ niveau: bonNiveau }).eq('id', carteData.id)
           carteData.niveau = bonNiveau
@@ -159,17 +153,12 @@ export default function FicheClient() {
     if (!carte || rechargeLoading || isNaN(amt) || amt <= 0) return
     setRechargeLoading(true)
     setRechargeSuccess('')
+    const pts = calcPoints(amt, config)
+    const nouveauxPoints = carte.points + pts
     const nouveauSolde = carte.solde + amt
-    const nouveauxPoints = carte.points + Math.round(amt / 100 * 2)
-    const pts = Math.round(amt / 100 * 2)
-    // ── Calcule le nouveau niveau ──
-    const bonNiveau = getNiveau(nouveauxPoints)
+    const bonNiveau = getNiveau(nouveauxPoints, config)
     await Promise.all([
-      supabase.from('cartes').update({
-        solde: nouveauSolde,
-        points: nouveauxPoints,
-        niveau: bonNiveau,
-      }).eq('id', carte.id),
+      supabase.from('cartes').update({ solde: nouveauSolde, points: nouveauxPoints, niveau: bonNiveau }).eq('id', carte.id),
       supabase.from('transactions').insert({
         carte_id: carte.id, type: 'recharge', montant: amt,
         points_gagnes: pts, description: `Recharge — ${amt.toLocaleString('fr-FR')} DA`,
@@ -180,13 +169,12 @@ export default function FicheClient() {
       id: `tmp-${Date.now()}`, type: 'recharge', montant: amt, points_gagnes: pts,
       description: `Recharge — ${amt.toLocaleString('fr-FR')} DA`, created_at: new Date().toISOString(),
     }, ...prev.slice(0, 9)])
-    setRechargeSuccess(`${amt.toLocaleString('fr-FR')} DA rechargés · +${pts} points${bonNiveau !== carte.niveau ? ` · 🎉 Niveau ${bonNiveau} !` : ''}`)
+    setRechargeSuccess(`${amt.toLocaleString('fr-FR')} DA rechargés · +${pts} pts${bonNiveau !== carte.niveau ? ` · 🎉 Niveau ${bonNiveau} !` : ''}`)
     setRechargeAmt('')
     setRechargeLoading(false)
     setTimeout(() => setRechargeSuccess(''), 3000)
   }
 
-  /* ── Loading ── */
   if (loading) return (
     <div className="min-h-screen bg-[#F7F4EE] flex items-center justify-center">
       <div className="flex flex-col items-center gap-3">
@@ -207,44 +195,25 @@ export default function FicheClient() {
     </div>
   )
 
-  const niveau = carte?.niveau || 'Bronze'
-  const nc = NIVEAU_COLORS[niveau] || NIVEAU_COLORS.Bronze
-  const nr = NIVEAU_RANGE[niveau] || NIVEAU_RANGE.Bronze
   const points = carte?.points || 0
-  const progress = nr.next
-    ? Math.min(100, Math.max(0, ((points - nr.min) / (nr.max - nr.min)) * 100))
-    : 100
+  const { niveau, next, max, progress } = getProgressionNiveau(points, config)
+  const nc = NIVEAU_COLORS[niveau] || NIVEAU_COLORS.Bronze
 
-  /* ── Helpers ── */
-  const Field = ({
-    label, value, onChange, type = 'text',
-  }: { label: string; value: string; onChange: (v: string) => void; type?: string }) => (
+  const Field = ({ label, value, onChange, type = 'text' }: { label: string; value: string; onChange: (v: string) => void; type?: string }) => (
     <div>
       <label className="block text-[9px] tracking-[0.18em] uppercase text-[#8A8275] mb-1.5">{label}</label>
-      <input
-        type={type}
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        className="w-full border border-[#C4B89E] rounded-xl px-3.5 py-2.5 text-sm text-[#2C2A25] bg-[#FAFAF8] outline-none focus:border-[#BA7517] focus:ring-1 focus:ring-[#BA7517]/20 transition-colors"
-      />
+      <input type={type} value={value} onChange={e => onChange(e.target.value)}
+        className="w-full border border-[#C4B89E] rounded-xl px-3.5 py-2.5 text-sm text-[#2C2A25] bg-[#FAFAF8] outline-none focus:border-[#BA7517] focus:ring-1 focus:ring-[#BA7517]/20 transition-colors" />
     </div>
   )
 
-  const Textarea = ({
-    label, value, onChange, rows = 2, placeholder = '', accent = false,
-  }: { label: string; value: string; onChange: (v: string) => void; rows?: number; placeholder?: string; accent?: boolean }) => (
+  const Textarea = ({ label, value, onChange, rows = 2, placeholder = '', accent = false }: { label: string; value: string; onChange: (v: string) => void; rows?: number; placeholder?: string; accent?: boolean }) => (
     <div>
       <label className="block text-[9px] tracking-[0.18em] uppercase text-[#8A8275] mb-1.5">
-        {label}
-        {accent && <span className="ml-1.5" style={{ color: '#BA7517' }}>(privé)</span>}
+        {label}{accent && <span className="ml-1.5" style={{ color: '#BA7517' }}>(privé)</span>}
       </label>
-      <textarea
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        rows={rows}
-        placeholder={placeholder}
-        className="w-full border border-[#C4B89E] rounded-xl px-3.5 py-2.5 text-sm text-[#2C2A25] bg-[#FAFAF8] outline-none focus:border-[#BA7517] focus:ring-1 focus:ring-[#BA7517]/20 transition-colors resize-none placeholder:text-[#B0A898]"
-      />
+      <textarea value={value} onChange={e => onChange(e.target.value)} rows={rows} placeholder={placeholder}
+        className="w-full border border-[#C4B89E] rounded-xl px-3.5 py-2.5 text-sm text-[#2C2A25] bg-[#FAFAF8] outline-none focus:border-[#BA7517] focus:ring-1 focus:ring-[#BA7517]/20 transition-colors resize-none placeholder:text-[#B0A898]" />
     </div>
   )
 
@@ -257,40 +226,23 @@ export default function FicheClient() {
         }
       `}</style>
 
-      {/* ══ 1. HEADER SOMBRE ══ */}
       <div className="bg-[#2C2A25] px-5 pt-5 pb-8">
         <div className="max-w-2xl mx-auto">
-          <button
-            onClick={() => router.push('/dashboard/clients')}
-            className="w-9 h-9 rounded-full border border-[#4A4840] flex items-center justify-center text-[#F7F4EE] opacity-60 hover:opacity-100 hover:border-[#BA7517] transition-all text-sm mb-6"
-          >
-            ←
-          </button>
-
+          <button onClick={() => router.push('/dashboard/clients')}
+            className="w-9 h-9 rounded-full border border-[#4A4840] flex items-center justify-center text-[#F7F4EE] opacity-60 hover:opacity-100 hover:border-[#BA7517] transition-all text-sm mb-6">←</button>
           <div className="flex items-start gap-4">
-            <div
-              className="w-16 h-16 rounded-2xl flex items-center justify-center text-xl font-semibold flex-shrink-0"
-              style={{ background: nc.bg, color: nc.text, border: `1px solid ${nc.border}` }}
-            >
+            <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-xl font-semibold flex-shrink-0"
+              style={{ background: nc.bg, color: nc.text, border: `1px solid ${nc.border}` }}>
               {client.prenom?.[0]?.toUpperCase()}{client.nom?.[0]?.toUpperCase()}
             </div>
-
             <div className="flex-1 min-w-0 pt-0.5">
-              <h1 className="text-xl font-medium text-[#F7F4EE] tracking-wide leading-tight">
-                {client.prenom} {client.nom}
-              </h1>
-              <p className="text-sm mt-1" style={{ color: 'rgba(247,244,238,0.4)' }}>
-                {client.telephone || 'Aucun téléphone'}
-              </p>
+              <h1 className="text-xl font-medium text-[#F7F4EE] tracking-wide leading-tight">{client.prenom} {client.nom}</h1>
+              <p className="text-sm mt-1" style={{ color: 'rgba(247,244,238,0.4)' }}>{client.telephone || 'Aucun téléphone'}</p>
               <p className="text-[10px] mt-0.5 tracking-wide" style={{ color: 'rgba(247,244,238,0.22)' }}>
                 Membre depuis {new Date(client.created_at).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}
               </p>
-              <span
-                className="inline-block mt-3 text-[9px] font-semibold px-3 py-1 rounded-full tracking-[0.15em] uppercase"
-                style={{ background: nc.bg, color: nc.text, border: `1px solid ${nc.border}` }}
-              >
-                {niveau}
-              </span>
+              <span className="inline-block mt-3 text-[9px] font-semibold px-3 py-1 rounded-full tracking-[0.15em] uppercase"
+                style={{ background: nc.bg, color: nc.text, border: `1px solid ${nc.border}` }}>{niveau}</span>
             </div>
           </div>
         </div>
@@ -298,7 +250,7 @@ export default function FicheClient() {
 
       <div className="max-w-2xl mx-auto px-5 py-6 flex flex-col gap-5">
 
-        {/* ══ 2. CARTE & SOLDE ══ */}
+        {/* CARTE & SOLDE */}
         <div className="bg-white border border-[#C4B89E] rounded-2xl shadow-md overflow-hidden">
           <div className="grid grid-cols-2 divide-x divide-[#E8E2D5]">
             <div className="p-5">
@@ -321,19 +273,16 @@ export default function FicheClient() {
             <div className="px-5 py-4 border-t border-[#E8E2D5]">
               <div className="flex items-center justify-between mb-2">
                 <p className="text-[9px] tracking-[0.15em] uppercase text-[#8A8275]">
-                  {nr.next ? `Vers niveau ${nr.next}` : 'Niveau maximum atteint'}
+                  {next ? `Vers niveau ${next}` : 'Niveau maximum atteint'}
                 </p>
-                {nr.next && (
+                {next && (
                   <p className="text-[9px] text-[#8A8275]">
-                    {points.toLocaleString('fr-FR')} / {nr.max.toLocaleString('fr-FR')} pts
+                    {points.toLocaleString('fr-FR')} / {max.toLocaleString('fr-FR')} pts
                   </p>
                 )}
               </div>
               <div className="h-1.5 bg-[#E8E2D5] rounded-full overflow-hidden">
-                <div
-                  className="h-full rounded-full transition-all duration-700"
-                  style={{ width: `${progress}%`, background: nc.text }}
-                />
+                <div className="h-full rounded-full transition-all duration-700" style={{ width: `${progress}%`, background: nc.text }} />
               </div>
             </div>
           )}
@@ -343,17 +292,14 @@ export default function FicheClient() {
               <p className="text-[8px] tracking-[0.2em] uppercase text-[#8A8275] mb-1">Carte RFID</p>
               {carte?.uid_rfid
                 ? <p className="text-xs font-mono text-[#2C2A25] truncate">{carte.uid_rfid}</p>
-                : <p className="text-xs italic" style={{ color: '#B0A898' }}>Aucune carte RFID associée</p>
-              }
+                : <p className="text-xs italic" style={{ color: '#B0A898' }}>Aucune carte RFID associée</p>}
             </div>
             {carte && !rfidOpen && (
               <div className="flex items-center gap-2 flex-shrink-0">
                 {carte.uid_rfid && (
                   <button onClick={openQr}
                     className="text-[9px] font-semibold tracking-[0.1em] uppercase px-3 py-1.5 rounded-lg border transition-colors whitespace-nowrap hover:opacity-80"
-                    style={{ borderColor: 'rgba(186,117,23,0.4)', color: '#BA7517' }}>
-                    Voir QR code
-                  </button>
+                    style={{ borderColor: 'rgba(186,117,23,0.4)', color: '#BA7517' }}>Voir QR code</button>
                 )}
                 <button onClick={openRfid}
                   className="text-[9px] font-semibold tracking-[0.1em] uppercase px-3 py-1.5 rounded-lg border transition-colors whitespace-nowrap hover:opacity-80"
@@ -366,9 +312,7 @@ export default function FicheClient() {
 
           {rfidOpen && (
             <div className="px-5 pb-5 border-t border-[#E8E2D5]">
-              <p className="text-[9px] tracking-[0.18em] uppercase text-[#8A8275] mt-4 mb-3">
-                Approcher la carte RFID du lecteur
-              </p>
+              <p className="text-[9px] tracking-[0.18em] uppercase text-[#8A8275] mt-4 mb-3">Approcher la carte RFID du lecteur</p>
               <div className="flex gap-2">
                 <input ref={rfidRef} placeholder="UID lu automatiquement..."
                   value={rfidValue} onChange={e => setRfidValue(e.target.value)}
@@ -380,24 +324,22 @@ export default function FicheClient() {
                   {rfidSaving ? '...' : 'Associer'}
                 </button>
                 <button onClick={() => { setRfidOpen(false); setRfidValue(''); setRfidError('') }}
-                  className="w-9 h-9 rounded-xl border border-[#C4B89E] flex items-center justify-center text-base text-[#8A8275] hover:text-[#2C2A25] transition-colors flex-shrink-0 self-center">
-                  ×
-                </button>
+                  className="w-9 h-9 rounded-xl border border-[#C4B89E] flex items-center justify-center text-base text-[#8A8275] hover:text-[#2C2A25] transition-colors flex-shrink-0 self-center">×</button>
               </div>
               {rfidError && <p className="text-[11px] text-red-500 mt-2">{rfidError}</p>}
             </div>
           )}
         </div>
 
-        {/* ══ 3. INFOS PERSONNELLES ══ */}
+        {/* INFOS PERSONNELLES */}
         <div className="bg-white border border-[#C4B89E] rounded-2xl shadow-md overflow-hidden">
           <div className="px-5 pt-5 pb-4 border-b border-[#E8E2D5]">
             <p className="text-[8px] tracking-[0.28em] uppercase text-[#8A8275] font-medium">Informations personnelles</p>
           </div>
           <div className="p-5 flex flex-col gap-4">
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Prénom"    value={form.prenom}    onChange={v => setForm(f => ({ ...f, prenom: v }))} />
-              <Field label="Nom"       value={form.nom}       onChange={v => setForm(f => ({ ...f, nom: v }))} />
+              <Field label="Prénom" value={form.prenom} onChange={v => setForm(f => ({ ...f, prenom: v }))} />
+              <Field label="Nom"    value={form.nom}    onChange={v => setForm(f => ({ ...f, nom: v }))} />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <Field label="Téléphone" value={form.telephone} onChange={v => setForm(f => ({ ...f, telephone: v }))} type="tel" />
@@ -405,24 +347,19 @@ export default function FicheClient() {
             </div>
             <Field label="Date d'anniversaire" value={form.date_naissance} onChange={v => setForm(f => ({ ...f, date_naissance: v }))} type="date" />
             <Textarea label="Allergies & contre-indications" value={form.allergies}
-              onChange={v => setForm(f => ({ ...f, allergies: v }))}
-              placeholder="Ex : allergie aux huiles essentielles de lavande..." />
+              onChange={v => setForm(f => ({ ...f, allergies: v }))} placeholder="Ex : allergie aux huiles essentielles de lavande..." />
             <Textarea label="Préférences massage & soins" value={form.preferences_massage}
-              onChange={v => setForm(f => ({ ...f, preferences_massage: v }))}
-              placeholder="Ex : pression forte, musique douce, huile de rose..." />
+              onChange={v => setForm(f => ({ ...f, preferences_massage: v }))} placeholder="Ex : pression forte, musique douce, huile de rose..." />
             <Textarea label="Notes praticien" value={form.notes_praticien}
-              onChange={v => setForm(f => ({ ...f, notes_praticien: v }))}
-              rows={3} placeholder="Notes internes non visibles par le client..." accent />
+              onChange={v => setForm(f => ({ ...f, notes_praticien: v }))} rows={3} placeholder="Notes internes non visibles par le client..." accent />
             <button onClick={handleSave} disabled={saving}
               className="w-full bg-[#2C2A25] text-[#F7F4EE] rounded-xl py-3 text-sm font-medium tracking-wide hover:bg-[#3C3A35] transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
-              {saving ? (
-                <><span className="w-4 h-4 rounded-full border-2 border-[#F7F4EE]/30 border-t-[#F7F4EE] animate-spin inline-block" />Sauvegarde...</>
-              ) : saveSuccess ? <span style={{ color: '#BA7517' }}>✓ Sauvegardé</span> : 'Sauvegarder'}
+              {saving ? (<><span className="w-4 h-4 rounded-full border-2 border-[#F7F4EE]/30 border-t-[#F7F4EE] animate-spin inline-block" />Sauvegarde...</>) : saveSuccess ? <span style={{ color: '#BA7517' }}>✓ Sauvegardé</span> : 'Sauvegarder'}
             </button>
           </div>
         </div>
 
-        {/* ══ 4. HISTORIQUE ══ */}
+        {/* HISTORIQUE */}
         <div className="bg-white border border-[#C4B89E] rounded-2xl shadow-md overflow-hidden">
           <div className="px-5 pt-5 pb-4 border-b border-[#E8E2D5]">
             <p className="text-[8px] tracking-[0.28em] uppercase text-[#8A8275] font-medium">Dernières transactions</p>
@@ -454,7 +391,7 @@ export default function FicheClient() {
           </div>
         </div>
 
-        {/* ══ 5. RECHARGE RAPIDE ══ */}
+        {/* RECHARGE RAPIDE */}
         {carte && (
           <div className="bg-white border border-[#C4B89E] rounded-2xl shadow-md overflow-hidden">
             <div className="px-5 pt-5 pb-4 border-b border-[#E8E2D5]">
@@ -464,8 +401,9 @@ export default function FicheClient() {
               <div className="grid grid-cols-4 gap-2">
                 {[2000, 5000, 10000, 20000].map(amt => (
                   <button key={amt} onClick={() => handleRecharge(amt)} disabled={rechargeLoading}
-                    className="py-3 rounded-xl border border-[#C4B89E] text-sm font-semibold text-[#2C2A25] hover:border-[#BA7517] hover:text-[#BA7517] transition-all disabled:opacity-40 active:scale-95">
-                    {amt >= 1000 ? `${amt / 1000}k` : amt}
+                    className="py-3 rounded-xl border border-[#C4B89E] text-sm font-semibold text-[#2C2A25] hover:border-[#BA7517] hover:text-[#BA7517] transition-all disabled:opacity-40 active:scale-95 flex flex-col items-center">
+                    <span>{amt >= 1000 ? `${amt / 1000}k` : amt}</span>
+                    <span className="text-[9px] font-normal mt-0.5" style={{ color: '#BA7517' }}>+{calcPoints(amt, config)} pts</span>
                   </button>
                 ))}
               </div>
@@ -494,7 +432,7 @@ export default function FicheClient() {
         <div className="h-6" />
       </div>
 
-      {/* ══ MODAL QR CODE ══ */}
+      {/* MODAL QR */}
       {qrOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-6"
           style={{ background: 'rgba(0,0,0,0.8)' }} onClick={() => setQrOpen(false)}>
@@ -505,13 +443,9 @@ export default function FicheClient() {
             <p className="text-[10px] font-mono text-[#8A8275] text-center break-all">{carte?.uid_rfid}</p>
             <div className="flex gap-3 w-full">
               <button onClick={downloadQr}
-                className="flex-1 bg-[#BA7517] text-white rounded-xl py-2.5 text-xs font-semibold tracking-wide hover:bg-[#A36714] transition-colors">
-                Télécharger
-              </button>
+                className="flex-1 bg-[#BA7517] text-white rounded-xl py-2.5 text-xs font-semibold tracking-wide hover:bg-[#A36714] transition-colors">Télécharger</button>
               <button onClick={() => setQrOpen(false)}
-                className="flex-1 border border-[#C4B89E] text-[#2C2A25] rounded-xl py-2.5 text-xs font-semibold hover:border-[#BA7517] hover:text-[#BA7517] transition-colors">
-                Fermer
-              </button>
+                className="flex-1 border border-[#C4B89E] text-[#2C2A25] rounded-xl py-2.5 text-xs font-semibold hover:border-[#BA7517] hover:text-[#BA7517] transition-colors">Fermer</button>
             </div>
           </div>
         </div>
