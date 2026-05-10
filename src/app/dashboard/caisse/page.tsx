@@ -3,15 +3,17 @@ import { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 
-type Item = { id: string; nom: string; prix: number; emoji: string; qty: number }
+type Item = { id: string; nom: string; prix: number; emoji: string; qty: number; categorie: string }
 
 export default function Caisse() {
   const router = useRouter()
   const [menu, setMenu] = useState<any[]>([])
   const [order, setOrder] = useState<Record<string, Item>>({})
+  const [filter, setFilter] = useState<'tous' | 'soin' | 'consommable'>('tous')
   const [carte, setCarte] = useState<any>(null)
   const [uid, setUid] = useState('')
   const [step, setStep] = useState<'order' | 'pay' | 'done'>('order')
+  const [sheetOpen, setSheetOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [errPay, setErrPay] = useState('')
   const [rfidMode, setRfidMode] = useState(false)
@@ -21,19 +23,20 @@ export default function Caisse() {
   const rfidModeRef = useRef(false)
   const carteFoundRef = useRef(false)
 
+  // ── Init menu Supabase ──
   useEffect(() => {
     const init = async () => {
       const { data } = await supabase.from('menu_items').select('*').eq('actif', true).order('nom')
       if (!data || data.length === 0) {
         const defaults = [
-          { nom: 'Café',          prix: 200,  emoji: '☕', categorie: 'consommable', actif: true },
-          { nom: 'Cocktail détox',prix: 800,  emoji: '🍹', categorie: 'consommable', actif: true },
-          { nom: 'Eau pétillante',prix: 150,  emoji: '💧', categorie: 'consommable', actif: true },
-          { nom: 'Massage 60 min',prix: 4500, emoji: '💆', categorie: 'soin',        actif: true },
-          { nom: 'Soin visage',   prix: 3500, emoji: '✨', categorie: 'soin',        actif: true },
-          { nom: 'Hammam',        prix: 2500, emoji: '🧖', categorie: 'soin',        actif: true },
-          { nom: 'Manucure',      prix: 1800, emoji: '💅', categorie: 'soin',        actif: true },
-          { nom: 'Huile argan',   prix: 2200, emoji: '🫙', categorie: 'consommable', actif: true },
+          { nom: 'Café',           prix: 200,  emoji: '☕', categorie: 'consommable', actif: true },
+          { nom: 'Cocktail détox', prix: 800,  emoji: '🍹', categorie: 'consommable', actif: true },
+          { nom: 'Eau pétillante', prix: 150,  emoji: '💧', categorie: 'consommable', actif: true },
+          { nom: 'Massage 60 min', prix: 4500, emoji: '💆', categorie: 'soin',        actif: true },
+          { nom: 'Soin visage',    prix: 3500, emoji: '✨', categorie: 'soin',        actif: true },
+          { nom: 'Hammam',         prix: 2500, emoji: '🧖', categorie: 'soin',        actif: true },
+          { nom: 'Manucure',       prix: 1800, emoji: '💅', categorie: 'soin',        actif: true },
+          { nom: 'Huile argan',    prix: 2200, emoji: '🫙', categorie: 'consommable', actif: true },
         ]
         await supabase.from('menu_items').insert(defaults)
         const { data: seeded } = await supabase.from('menu_items').select('*').eq('actif', true).order('nom')
@@ -45,7 +48,12 @@ export default function Caisse() {
     init()
   }, [])
 
-  // Refocus UID quand on entre en step 'pay' avec le mode RFID déjà actif
+  // ── Auto-open sheet au paiement ──
+  useEffect(() => {
+    if (step === 'pay') setSheetOpen(true)
+  }, [step])
+
+  // ── RFID focus ──
   useEffect(() => {
     if (step === 'pay' && rfidMode) {
       carteFoundRef.current = false
@@ -54,6 +62,8 @@ export default function Caisse() {
   }, [step, rfidMode])
 
   const total = Object.values(order).reduce((s, i) => s + i.prix * i.qty, 0)
+  const itemCount = Object.values(order).reduce((s, i) => s + i.qty, 0)
+  const filteredMenu = filter === 'tous' ? menu : menu.filter(m => m.categorie === filter)
 
   const addItem = (item: any) => {
     setOrder(prev => ({
@@ -66,10 +76,10 @@ export default function Caisse() {
 
   const removeItem = (id: string) => {
     setOrder(prev => {
-      const updated = { ...prev }
-      if (updated[id].qty > 1) updated[id] = { ...updated[id], qty: updated[id].qty - 1 }
-      else delete updated[id]
-      return updated
+      const u = { ...prev }
+      if (u[id].qty > 1) u[id] = { ...u[id], qty: u[id].qty - 1 }
+      else delete u[id]
+      return u
     })
   }
 
@@ -95,11 +105,11 @@ export default function Caisse() {
     const pts = Math.round(total / 100 * 1.5)
     await supabase.from('cartes').update({
       solde: carte.solde - total,
-      points: carte.points + pts
+      points: carte.points + pts,
     }).eq('id', carte.id)
     await supabase.from('transactions').insert({
       carte_id: carte.id, type: 'debit',
-      montant: total, points_gagnes: pts, description: 'Caisse POS'
+      montant: total, points_gagnes: pts, description: 'Caisse POS',
     })
     setStep('done')
     setLoading(false)
@@ -125,243 +135,312 @@ export default function Caisse() {
     }, 100)
   }
 
+  const reset = () => {
+    setOrder({})
+    setCarte(null)
+    setUid('')
+    setErrPay('')
+    setStep('order')
+    setSheetOpen(false)
+    setRfidMode(false)
+    rfidModeRef.current = false
+    carteFoundRef.current = false
+  }
+
+  // ── Écran done ──
   if (step === 'done') return (
     <div className="min-h-screen bg-[#2C2A25] flex items-center justify-center p-6">
-      <div className="bg-[#3A3830] border border-[#4A4840] rounded-3xl p-10 text-center max-w-sm w-full shadow-2xl">
-        <div className="w-16 h-16 rounded-full bg-[#BA7517]/15 border border-[#BA7517]/40 flex items-center justify-center mx-auto mb-6">
-          <span className="text-2xl text-[#BA7517]">✓</span>
+      <div className="bg-[#3A3830] border border-[#4A4840] rounded-3xl p-8 text-center w-full max-w-sm shadow-2xl">
+        <div className="w-20 h-20 rounded-full bg-[#BA7517]/15 border border-[#BA7517]/40 flex items-center justify-center mx-auto mb-6">
+          <span className="text-3xl text-[#BA7517]">✓</span>
         </div>
-        <h2 className="text-2xl font-light text-[#F7F4EE] mb-5">Paiement validé</h2>
-        <div className="py-5 border-t border-b border-[#4A4840] flex justify-around">
+        <h2 className="text-2xl font-light text-[#F7F4EE] mb-6">Paiement validé</h2>
+        <div className="py-5 border-t border-b border-[#4A4840] grid grid-cols-2 gap-4">
           <div>
-            <p className="text-[9px] tracking-[0.2em] uppercase text-[#8A8275] mb-1">Montant débité</p>
-            <p className="text-2xl font-light text-[#BA7517]">{total.toLocaleString('fr-FR')} DA</p>
+            <p className="text-[10px] tracking-[0.2em] uppercase text-[#8A8275] mb-1.5">Débité</p>
+            <p className="text-xl font-light text-[#BA7517]">{total.toLocaleString('fr-FR')} <span className="text-xs">DA</span></p>
           </div>
-          <div className="w-px bg-[#4A4840]" />
-          <div>
-            <p className="text-[9px] tracking-[0.2em] uppercase text-[#8A8275] mb-1">Nouveau solde</p>
-            <p className="text-lg font-medium text-[#F7F4EE]">{(carte.solde - total).toLocaleString('fr-FR')} DA</p>
+          <div className="border-l border-[#4A4840] pl-4">
+            <p className="text-[10px] tracking-[0.2em] uppercase text-[#8A8275] mb-1.5">Nouveau solde</p>
+            <p className="text-base font-medium text-[#F7F4EE]">{(carte.solde - total).toLocaleString('fr-FR')} <span className="text-xs text-[#8A8275]">DA</span></p>
           </div>
         </div>
-        <button
-          onClick={() => { setOrder({}); setCarte(null); setUid(''); setStep('order') }}
-          className="w-full mt-8 bg-[#BA7517] text-white rounded-2xl py-4 text-[10px] tracking-[0.2em] uppercase font-medium hover:bg-[#A36714] transition-colors duration-300"
-        >
+        <button onClick={reset}
+          className="w-full mt-7 bg-[#BA7517] text-white rounded-2xl py-4 text-xs tracking-[0.2em] uppercase font-medium hover:bg-[#A36714] transition-colors"
+          style={{ minHeight: 52 }}>
           Nouvelle commande
         </button>
       </div>
     </div>
   )
 
+  // ── Écran principal ──
   return (
-    <div className="min-h-screen bg-[#E8E2D5] flex flex-col">
+    <div className="min-h-screen bg-[#E8E2D5] flex flex-col relative overflow-hidden">
       <style>{`
-        @keyframes rfid-dot-pulse {
-          0%, 100% { opacity: 1; transform: scale(1); }
-          50% { opacity: 0.4; transform: scale(0.75); }
-        }
+        @keyframes rfid-dot-pulse { 0%,100% { opacity:1; transform:scale(1); } 50% { opacity:0.4; transform:scale(0.75); } }
         @keyframes rfid-border-glow {
-          0%, 100% { box-shadow: 0 0 0 1px rgba(186,117,23,0.55), 0 0 6px rgba(186,117,23,0.2); }
-          50% { box-shadow: 0 0 0 2px rgba(186,117,23,1), 0 0 14px rgba(186,117,23,0.45); }
+          0%,100% { box-shadow: 0 0 0 1px rgba(186,117,23,0.55), 0 0 6px rgba(186,117,23,0.2); }
+          50%     { box-shadow: 0 0 0 2px rgba(186,117,23,1), 0 0 14px rgba(186,117,23,0.45); }
         }
+        @keyframes sheet-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        @keyframes overlay-fade { from { opacity:0; } to { opacity:1; } }
+        .num-input::-webkit-outer-spin-button,
+        .num-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
       `}</style>
-      {/* Header */}
-      <div className="bg-[#2C2A25] px-6 py-4 flex items-center gap-4 shadow-lg">
+
+      {/* ── Header sticky ── */}
+      <div className="bg-[#2C2A25] px-4 pb-3 flex items-center gap-3 shadow-lg flex-shrink-0"
+        style={{ paddingTop: 'max(env(safe-area-inset-top), 14px)' }}>
         <button
           onClick={() => router.push('/dashboard')}
-          className="w-9 h-9 rounded-full border border-[#4A4840] flex items-center justify-center text-[#F7F4EE] opacity-70 hover:opacity-100 hover:border-[#BA7517] transition-all text-sm"
-        >
-          ←
+          className="w-11 h-11 rounded-full border border-[#4A4840] flex items-center justify-center text-[#F7F4EE] active:bg-[#3A3830] transition-colors"
+          aria-label="Retour"
+          style={{ minWidth: 44, minHeight: 44 }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="15 18 9 12 15 6" />
+          </svg>
         </button>
-        <div>
+        <div className="flex-1">
           <h1 className="text-sm font-medium text-[#F7F4EE] tracking-wide">Caisse POS</h1>
           <p className="text-xs text-[#BA7517]">Point de vente</p>
         </div>
         {total > 0 && (
-          <span className="ml-auto text-sm font-semibold text-[#BA7517] bg-[#BA7517]/10 border border-[#BA7517]/30 rounded-xl px-3 py-1">
+          <span className="text-sm font-semibold text-[#BA7517] bg-[#BA7517]/10 border border-[#BA7517]/30 rounded-xl px-3 py-1">
             {total.toLocaleString('fr-FR')} DA
           </span>
         )}
       </div>
 
-      <div className="flex flex-1 overflow-hidden">
-        {/* Menu */}
-        <div className="flex-1 p-5 overflow-y-auto bg-[#E8E2D5]">
-          <div className="grid grid-cols-3 gap-3">
-            {menu.map(item => (
-              <button
-                key={item.id}
-                onClick={() => addItem(item)}
-                className="bg-white border border-[#C4B89E] rounded-2xl p-4 text-center hover:border-[#BA7517] hover:shadow-lg transition-all duration-200 active:scale-95 shadow-md"
-              >
-                <div className="text-2xl mb-2.5">{item.emoji}</div>
-                <div className="text-[11px] font-medium text-[#2C2A25] tracking-wide mb-1 leading-tight">{item.nom}</div>
-                <div className="text-[10px] text-[#8A8275]">{item.prix.toLocaleString('fr-FR')} DA</div>
-              </button>
-            ))}
+      {/* ── Chips filtre ── */}
+      <div className="bg-[#2C2A25] px-4 pb-3 flex gap-2 flex-shrink-0">
+        {(['tous', 'soin', 'consommable'] as const).map(f => (
+          <button key={f} onClick={() => setFilter(f)}
+            className="px-4 py-2 rounded-full text-xs font-medium transition-all whitespace-nowrap"
+            style={{
+              background: filter === f ? '#BA7517' : 'rgba(247,244,238,0.07)',
+              color: filter === f ? '#fff' : '#8A8275',
+              minHeight: 36,
+            }}>
+            {f === 'tous' ? 'Tous' : f === 'soin' ? '✨ Soins' : '📦 Consommables'}
+          </button>
+        ))}
+      </div>
 
-          </div>
-        </div>
-
-        {/* Panneau commande — dark */}
-        <div className="w-72 bg-[#2C2A25] flex flex-col shadow-[-4px_0_24px_rgba(0,0,0,0.2)]">
-          <div className="px-5 py-4 border-b border-[#3A3830]">
-            <p className="text-[9px] font-medium uppercase tracking-[0.25em] text-[#8A8275]">Commande</p>
-          </div>
-
-          <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-2">
-            {Object.values(order).length === 0 && (
-              <div className="flex flex-col items-center justify-center mt-12 gap-3 opacity-30">
-                <div className="text-2xl text-[#F7F4EE]">⊹</div>
-                <p className="text-[10px] tracking-[0.2em] uppercase text-[#F7F4EE]">Aucun article</p>
-              </div>
-            )}
-            {Object.values(order).map(item => (
-              <div key={item.id} className="flex items-center gap-2.5 px-3 py-2.5 bg-[#3A3830] rounded-2xl border border-[#4A4840]">
-                <span className="text-base flex-shrink-0">{item.emoji}</span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[11px] font-medium text-[#F7F4EE] truncate">{item.nom}</p>
-                  <p className="text-[10px] text-[#BA7517]">{(item.prix * item.qty).toLocaleString('fr-FR')} DA</p>
-                </div>
-                {/* Contrôles groupés */}
-                <div className="flex items-center flex-shrink-0 bg-[#2C2A25] rounded-xl border border-[#4A4840] overflow-hidden">
-                  <button
-                    onClick={() => removeItem(item.id)}
-                    className="w-7 h-7 flex items-center justify-center text-[#8A8275] hover:text-rose-400 hover:bg-rose-500/10 transition-all"
-                  >
-                    {item.qty === 1 ? (
-                      <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                        <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
-                      </svg>
-                    ) : (
-                      <span className="text-xs font-bold leading-none">−</span>
-                    )}
-                  </button>
-                  <span className="text-[11px] font-semibold text-[#F7F4EE] w-5 text-center border-x border-[#4A4840]">{item.qty}</span>
-                  <button
-                    onClick={() => addItem(item)}
-                    className="w-7 h-7 flex items-center justify-center text-[#8A8275] hover:text-[#BA7517] hover:bg-[#BA7517]/10 transition-all"
-                  >
-                    <span className="text-xs font-bold leading-none">+</span>
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="p-4 border-t border-[#3A3830]">
-            <div className="flex justify-between items-baseline mb-5">
-              <span className="text-[9px] uppercase tracking-[0.2em] text-[#8A8275]">Total</span>
-              <span className="text-3xl font-light text-[#F7F4EE]">
-                {total.toLocaleString('fr-FR')}
-                <span className="text-xs text-[#8A8275] ml-1">DA</span>
-              </span>
-            </div>
-
-            {step === 'order' && (
-              <button
-                onClick={() => setStep('pay')}
-                disabled={total === 0}
-                className="w-full bg-[#BA7517] text-white rounded-2xl py-3.5 text-[10px] tracking-[0.15em] uppercase font-medium hover:bg-[#A36714] transition-colors duration-300 disabled:opacity-30 shadow-[0_4px_12px_rgba(186,117,23,0.3)]"
-              >
-                Payer par carte
-              </button>
-            )}
-
-            {step === 'pay' && (
-              <div className="flex flex-col gap-3">
-
-                {/* Label + toggle RFID */}
-                <div className="flex items-center justify-between">
-                  <p className="text-[9px] font-medium uppercase tracking-[0.25em] text-[#8A8275]">Carte client</p>
-                  <button
-                    onClick={toggleRfidMode}
-                    className="text-[8px] font-bold tracking-[0.08em] uppercase px-2 py-0.5 rounded-full transition-all whitespace-nowrap"
-                    style={{
-                      background: rfidMode ? '#BA7517' : 'transparent',
-                      color:      rfidMode ? '#ffffff' : '#BA7517',
-                      border:     rfidMode ? 'none'    : '1px solid rgba(186,117,23,0.4)',
-                    }}
-                  >
-                    {rfidMode ? 'RFID ON' : 'Mode RFID'}
-                  </button>
-                </div>
-
-                {/* Indicateur En attente */}
-                {rfidMode && !carte && (
-                  <div
-                    className="flex items-center gap-2 px-2.5 py-2 rounded-lg"
-                    style={{ background: 'rgba(186,117,23,0.07)', border: '1px solid rgba(186,117,23,0.18)' }}
-                  >
-                    <div style={{
-                      width: '5px', height: '5px', borderRadius: '50%',
-                      background: '#BA7517', flexShrink: 0,
-                      animation: 'rfid-dot-pulse 1.2s ease-in-out infinite',
-                    }} />
-                    <p className="text-[8px] tracking-[0.12em] uppercase font-medium" style={{ color: '#BA7517' }}>
-                      En attente de la carte...
-                    </p>
-                  </div>
+      {/* ── Grille menu ── */}
+      <div className="flex-1 overflow-y-auto p-4" style={{ paddingBottom: itemCount > 0 ? 96 : 16 }}>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+          {filteredMenu.map(item => {
+            const qty = order[item.id]?.qty || 0
+            return (
+              <button key={item.id} onClick={() => addItem(item)}
+                className="bg-white border rounded-2xl p-4 text-center active:scale-95 transition-all duration-150 shadow-md relative"
+                style={{
+                  borderColor: qty > 0 ? '#BA7517' : 'rgba(196,184,158,0.6)',
+                  minHeight: 110,
+                }}>
+                {qty > 0 && (
+                  <span className="absolute top-2 right-2 w-5 h-5 rounded-full bg-[#BA7517] text-white text-[10px] font-bold flex items-center justify-center">
+                    {qty}
+                  </span>
                 )}
-
-                {/* Input UID */}
-                <div className="flex gap-2">
-                  <input
-                    ref={uidRef}
-                    placeholder={rfidMode ? 'Approcher la carte...' : 'UID de la carte...'}
-                    value={uid}
-                    onChange={e => setUid(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && handleFindCarte()}
-                    onBlur={handleUidBlur}
-                    className="flex-1 border border-[#4A4840] rounded-xl px-3 py-2.5 text-xs text-[#F7F4EE] outline-none focus:border-[#BA7517] bg-[#3A3830] transition-colors placeholder:text-[#5A5850]"
-                    style={rfidMode ? { animation: 'rfid-border-glow 1.5s ease-in-out infinite' } : {}}
-                  />
-                  <button
-                    onClick={handleFindCarte}
-                    disabled={loading}
-                    className="bg-[#BA7517] text-white rounded-xl px-3 py-2.5 text-[9px] tracking-[0.1em] uppercase font-medium hover:bg-[#A36714] transition-colors duration-300"
-                  >
-                    OK
-                  </button>
-                </div>
-
-                {errPay && <p className="text-[10px] text-rose-400">{errPay}</p>}
-
-                {carte && (
-                  <div className={`rounded-xl p-3 border ${carte.solde >= total ? 'bg-[#BA7517]/10 border-[#BA7517]/30' : 'bg-rose-500/10 border-rose-500/30'}`}>
-                    <p className="text-[10px] font-medium text-[#F7F4EE]">{carte.clients?.prenom} {carte.clients?.nom}</p>
-                    <p className="text-[10px] text-[#8A8275] mt-0.5">Solde : {carte.solde?.toLocaleString('fr-FR')} DA</p>
-                    {carte.solde < total && <p className="text-[10px] text-rose-400 mt-1 font-medium">Solde insuffisant</p>}
-                  </div>
-                )}
-
-                <button
-                  ref={confirmRef}
-                  onClick={handlePay}
-                  disabled={!carte || carte.solde < total || loading}
-                  className="w-full bg-[#BA7517] text-white rounded-xl py-3 text-[10px] tracking-[0.15em] uppercase font-medium hover:bg-[#A36714] transition-colors disabled:opacity-30 shadow-[0_4px_12px_rgba(186,117,23,0.3)]"
-                >
-                  {loading ? '...' : `Confirmer ${total.toLocaleString('fr-FR')} DA`}
-                </button>
-
-                <button
-                  onClick={() => {
-                    setStep('order')
-                    setCarte(null)
-                    carteFoundRef.current = false
-                    setUid('')
-                    setErrPay('')
-                  }}
-                  className="text-[9px] tracking-[0.15em] uppercase text-[#8A8275] text-center hover:text-[#F7F4EE] transition-colors"
-                >
-                  Annuler
-                </button>
-              </div>
-            )}
-          </div>
+                <div className="text-3xl mb-2">{item.emoji}</div>
+                <div className="text-xs font-medium text-[#2C2A25] leading-tight mb-1">{item.nom}</div>
+                <div className="text-[11px] text-[#8A8275]">{item.prix.toLocaleString('fr-FR')} DA</div>
+              </button>
+            )
+          })}
         </div>
       </div>
 
+      {/* ── Bottom bar sticky ── */}
+      {itemCount > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 bg-[#2C2A25] border-t border-[#3A3830] px-4 pt-3 flex-shrink-0 z-30"
+          style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 12px)' }}>
+          <button onClick={() => setSheetOpen(true)}
+            className="w-full bg-[#BA7517] text-white rounded-2xl text-sm font-semibold tracking-wide flex items-center justify-between px-5 active:bg-[#A36714] transition-colors shadow-[0_4px_16px_rgba(186,117,23,0.4)]"
+            style={{ minHeight: 56 }}>
+            <span className="bg-white/20 rounded-lg px-2.5 py-1 text-xs font-bold">{itemCount}</span>
+            <span>Voir la commande</span>
+            <span>{total.toLocaleString('fr-FR')} DA</span>
+          </button>
+        </div>
+      )}
+
+      {/* ── Bottom sheet ── */}
+      {sheetOpen && (
+        <>
+          {/* Overlay */}
+          <div
+            className="fixed inset-0 bg-black/60 z-40"
+            style={{ animation: 'overlay-fade 0.2s ease' }}
+            onClick={() => { if (step === 'order') setSheetOpen(false) }}
+          />
+
+          {/* Sheet */}
+          <div
+            className="fixed bottom-0 left-0 right-0 bg-[#2C2A25] rounded-t-3xl z-50 flex flex-col"
+            style={{ maxHeight: '92vh', animation: 'sheet-up 0.3s cubic-bezier(0.32,0.72,0,1)' }}>
+
+            {/* Drag handle */}
+            <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
+              <div className="w-10 h-1 rounded-full bg-[#4A4840]" />
+            </div>
+
+            {/* Sheet header */}
+            <div className="flex items-center justify-between px-5 py-3 border-b border-[#3A3830] flex-shrink-0">
+              <div>
+                <p className="text-[10px] font-medium uppercase tracking-[0.25em] text-[#8A8275]">Commande</p>
+                <p className="text-xs text-[#F7F4EE] mt-0.5">{itemCount} article{itemCount > 1 ? 's' : ''}</p>
+              </div>
+              <button
+                onClick={() => { if (step === 'order') setSheetOpen(false); else { setStep('order'); setCarte(null); setUid(''); setErrPay('') } }}
+                className="w-9 h-9 rounded-full bg-[#3A3830] border border-[#4A4840] flex items-center justify-center text-[#8A8275] active:text-[#F7F4EE]"
+                style={{ minWidth: 36, minHeight: 36 }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Items scrollables */}
+            <div className="flex-1 overflow-y-auto px-4 pb-2">
+              <div className="flex flex-col gap-2 py-2">
+                {Object.values(order).map(item => (
+                  <div key={item.id} className="flex items-center gap-3 p-3 bg-[#3A3830] rounded-2xl border border-[#4A4840]">
+                    <span className="text-2xl flex-shrink-0">{item.emoji}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-[#F7F4EE] truncate">{item.nom}</p>
+                      <p className="text-xs text-[#BA7517] mt-0.5">{(item.prix * item.qty).toLocaleString('fr-FR')} DA</p>
+                    </div>
+                    <div className="flex items-center flex-shrink-0 bg-[#2C2A25] rounded-xl border border-[#4A4840] overflow-hidden">
+                      <button onClick={() => removeItem(item.id)}
+                        className="w-10 h-10 flex items-center justify-center text-[#8A8275] active:text-rose-400"
+                        style={{ minWidth: 40, minHeight: 40 }}>
+                        {item.qty === 1 ? (
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /><path d="M10 11v6" /><path d="M14 11v6" /><path d="M9 6V4h6v2" />
+                          </svg>
+                        ) : (
+                          <span className="text-base font-bold leading-none">−</span>
+                        )}
+                      </button>
+                      <span className="text-sm font-semibold text-[#F7F4EE] w-8 text-center border-x border-[#4A4840]">{item.qty}</span>
+                      <button onClick={() => addItem(item)}
+                        className="w-10 h-10 flex items-center justify-center text-[#8A8275] active:text-[#BA7517]"
+                        style={{ minWidth: 40, minHeight: 40 }}>
+                        <span className="text-base font-bold leading-none">+</span>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Sheet footer */}
+            <div className="px-5 pt-3 border-t border-[#3A3830] flex-shrink-0"
+              style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 20px)' }}>
+              <div className="flex justify-between items-baseline mb-4">
+                <span className="text-[10px] uppercase tracking-[0.2em] text-[#8A8275]">Total</span>
+                <span className="text-3xl font-light text-[#F7F4EE]">
+                  {total.toLocaleString('fr-FR')}<span className="text-sm text-[#8A8275] ml-1.5">DA</span>
+                </span>
+              </div>
+
+              {step === 'order' && (
+                <button onClick={() => setStep('pay')}
+                  className="w-full bg-[#BA7517] text-white rounded-2xl text-xs tracking-[0.2em] uppercase font-medium active:bg-[#A36714] transition-colors shadow-[0_4px_12px_rgba(186,117,23,0.3)]"
+                  style={{ minHeight: 56 }}>
+                  Payer par carte
+                </button>
+              )}
+
+              {step === 'pay' && (
+                <div className="flex flex-col gap-3">
+                  {/* Toggle RFID */}
+                  <div className="flex items-center justify-between">
+                    <p className="text-[10px] font-medium uppercase tracking-[0.25em] text-[#8A8275]">Carte client</p>
+                    <button onClick={toggleRfidMode}
+                      className="text-[10px] font-bold tracking-[0.08em] uppercase px-3 py-1.5 rounded-full transition-all whitespace-nowrap"
+                      style={{
+                        background: rfidMode ? '#BA7517' : 'transparent',
+                        color:      rfidMode ? '#ffffff' : '#BA7517',
+                        border:     rfidMode ? 'none'    : '1px solid rgba(186,117,23,0.4)',
+                        minHeight: 32,
+                      }}>
+                      {rfidMode ? 'RFID ON' : 'Mode RFID'}
+                    </button>
+                  </div>
+
+                  {/* Indicateur RFID */}
+                  {rfidMode && !carte && (
+                    <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl"
+                      style={{ background: 'rgba(186,117,23,0.07)', border: '1px solid rgba(186,117,23,0.18)' }}>
+                      <div style={{
+                        width: 6, height: 6, borderRadius: '50%',
+                        background: '#BA7517', flexShrink: 0,
+                        animation: 'rfid-dot-pulse 1.2s ease-in-out infinite',
+                      }} />
+                      <p className="text-[10px] tracking-[0.12em] uppercase font-medium" style={{ color: '#BA7517' }}>
+                        En attente de la carte...
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Input UID */}
+                  <div className="flex gap-2">
+                    <input
+                      ref={uidRef}
+                      placeholder={rfidMode ? 'Approcher la carte...' : 'UID de la carte'}
+                      value={uid}
+                      onChange={e => setUid(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && handleFindCarte()}
+                      onBlur={handleUidBlur}
+                      autoCapitalize="characters"
+                      autoCorrect="off"
+                      spellCheck={false}
+                      className="flex-1 border border-[#4A4840] rounded-2xl px-4 text-[#F7F4EE] outline-none focus:border-[#BA7517] bg-[#3A3830] transition-colors placeholder:text-[#5A5850]"
+                      style={{
+                        fontSize: 16,
+                        minHeight: 52,
+                        animation: rfidMode ? 'rfid-border-glow 1.5s ease-in-out infinite' : 'none',
+                      }}
+                    />
+                    <button onClick={handleFindCarte} disabled={loading || !uid}
+                      className="bg-[#BA7517] text-white rounded-2xl px-5 text-xs tracking-[0.15em] uppercase font-semibold active:bg-[#A36714] disabled:opacity-30 transition-colors"
+                      style={{ minHeight: 52, minWidth: 64 }}>
+                      OK
+                    </button>
+                  </div>
+
+                  {errPay && <p className="text-xs text-rose-400">{errPay}</p>}
+
+                  {carte && (
+                    <div className={`rounded-2xl p-3.5 border ${carte.solde >= total ? 'bg-[#BA7517]/10 border-[#BA7517]/30' : 'bg-rose-500/10 border-rose-500/30'}`}>
+                      <p className="text-sm font-medium text-[#F7F4EE]">{carte.clients?.prenom} {carte.clients?.nom}</p>
+                      <p className="text-xs text-[#8A8275] mt-1">Solde : <span className="text-[#F7F4EE]">{carte.solde?.toLocaleString('fr-FR')} DA</span></p>
+                      {carte.solde < total && <p className="text-xs text-rose-400 mt-1.5 font-medium">Solde insuffisant</p>}
+                    </div>
+                  )}
+
+                  <button ref={confirmRef} onClick={handlePay}
+                    disabled={!carte || carte.solde < total || loading}
+                    className="w-full bg-[#BA7517] text-white rounded-2xl text-xs tracking-[0.2em] uppercase font-medium active:bg-[#A36714] disabled:opacity-30 transition-colors shadow-[0_4px_12px_rgba(186,117,23,0.3)]"
+                    style={{ minHeight: 56 }}>
+                    {loading ? '...' : `Confirmer ${total.toLocaleString('fr-FR')} DA`}
+                  </button>
+
+                  <button
+                    onClick={() => { setStep('order'); setCarte(null); setUid(''); setErrPay(''); setRfidMode(false); rfidModeRef.current = false }}
+                    className="text-[11px] tracking-[0.15em] uppercase text-[#8A8275] text-center active:text-[#F7F4EE] py-2">
+                    Annuler
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </>
+      )}
     </div>
   )
 }
