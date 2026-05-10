@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
+import BackButton from '../_components/BackButton'
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, PieChart, Pie, Cell,
@@ -324,10 +325,7 @@ export default function Statistiques() {
       {/* Header */}
       <div className="bg-[#2C2A25] px-5 pt-4 pb-0 shadow-lg">
         <div className="flex items-center gap-3 mb-4">
-          <button
-            onClick={() => router.push('/dashboard')}
-            className="w-9 h-9 rounded-full border border-[#4A4840] flex items-center justify-center text-[#F7F4EE] opacity-60 hover:opacity-100 hover:border-[#BA7517] transition-all text-sm flex-shrink-0"
-          >←</button>
+          <BackButton href="/dashboard" />
           <div>
             <h1 className="text-base font-medium text-[#F7F4EE]">Statistiques</h1>
             <p className="text-[10px] text-[#BA7517] tracking-wider">Performance & analytiques</p>

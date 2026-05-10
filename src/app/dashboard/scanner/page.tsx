@@ -2,6 +2,7 @@
 import { useState, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
+import BackButton from '../_components/BackButton'
 
 const NIVEAU_DARK: Record<string, { bg: string; text: string; accent: string }> = {
   Bronze:  { bg: 'rgba(113,43,19,0.3)',  text: '#D4915E', accent: '#D4915E' },
@@ -149,7 +150,7 @@ export default function Scanner() {
           display: 'flex', alignItems: 'center', gap: '16px',
           padding: '20px 0',
         }}>
-          <button className="hd-back" onClick={() => router.push('/dashboard')}>←</button>
+          <BackButton href="/dashboard" />
           <div style={{ flex: 1 }}>
             <h1 style={{ fontSize: '14px', fontWeight: 500, color: '#F7F4EE', letterSpacing: '0.04em', margin: 0 }}>
               Scanner une carte

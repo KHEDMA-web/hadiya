@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
+import BackButton from '../_components/BackButton'
 
 const NIVEAU: Record<string, { badge: string; text: string; avatar: string }> = {
   Bronze:  { badge: 'bg-[#C4813A]/15 text-[#C4813A] border-[#C4813A]/30',  text: '#C4813A', avatar: 'bg-[#C4813A]/20 text-[#C4813A]' },
@@ -36,12 +37,7 @@ export default function Clients() {
 
       {/* Header */}
       <div className="bg-[#2C2A25] px-6 py-4 flex items-center gap-4 shadow-lg">
-        <button
-          onClick={() => router.push('/dashboard')}
-          className="w-9 h-9 rounded-full border border-[#4A4840] flex items-center justify-center text-[#F7F4EE] opacity-70 hover:opacity-100 hover:border-[#BA7517] transition-all text-sm flex-shrink-0"
-        >
-          ←
-        </button>
+        <BackButton href="/dashboard" />
         <div>
           <h1 className="text-base font-medium text-[#F7F4EE]">Clients</h1>
           <p className="text-xs text-[#BA7517]">

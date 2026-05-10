@@ -2,6 +2,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter, useParams } from 'next/navigation'
+import BackButton from '../../_components/BackButton'
 import QRCode from 'qrcode'
 import { getConfigFidelite, getNiveau, calcPoints, getProgressionNiveau, DEFAULT_CONFIG, type ConfigFidelite } from '@/lib/fidelite'
 
@@ -228,8 +229,7 @@ export default function FicheClient() {
 
       <div className="bg-[#2C2A25] px-5 pt-5 pb-8">
         <div className="max-w-2xl mx-auto">
-          <button onClick={() => router.push('/dashboard/clients')}
-            className="w-9 h-9 rounded-full border border-[#4A4840] flex items-center justify-center text-[#F7F4EE] opacity-60 hover:opacity-100 hover:border-[#BA7517] transition-all text-sm mb-6">←</button>
+          <BackButton href="/dashboard/clients" className="mb-6" />
           <div className="flex items-start gap-4">
             <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-xl font-semibold flex-shrink-0"
               style={{ background: nc.bg, color: nc.text, border: `1px solid ${nc.border}` }}>

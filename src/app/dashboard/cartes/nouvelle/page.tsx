@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import QRCode from 'qrcode'
+import BackButton from '../../_components/BackButton'
 
 export default function NouvelleCarte() {
   const router = useRouter()
@@ -88,7 +89,7 @@ export default function NouvelleCarte() {
   return (
     <div className="min-h-screen bg-[#E8E2D5]">
       <div className="bg-[#2C2A25] px-6 py-4 flex items-center gap-4">
-        <button onClick={() => router.push('/dashboard')} className="text-[#F7F4EE] opacity-70 hover:opacity-100 text-lg">←</button>
+        <BackButton href="/dashboard" />
         <div>
           <h1 className="text-base font-medium text-[#F7F4EE]">Nouvelle carte cadeau</h1>
           <p className="text-xs text-[#BA7517]">Remplir les informations</p>

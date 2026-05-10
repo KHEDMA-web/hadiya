@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import { ROLE_DEFAULTS, type Permissions } from '@/lib/auth'
+import BackButton from '../../_components/BackButton'
 
 type Employe = {
   id: string
@@ -154,8 +155,7 @@ export default function Employes() {
 
       {/* Header */}
       <div className="bg-[#2C2A25] px-6 py-4 flex items-center gap-4 shadow-lg">
-        <button onClick={() => router.push('/dashboard/admin')}
-          className="w-9 h-9 rounded-full border border-[#4A4840] flex items-center justify-center text-[#F7F4EE] opacity-70 hover:opacity-100 hover:border-[#BA7517] transition-all text-sm flex-shrink-0">←</button>
+        <BackButton href="/dashboard/admin" />
         <div className="flex-1">
           <h1 className="text-base font-medium text-[#F7F4EE]">Équipe & Accès</h1>
           <p className="text-xs text-[#BA7517]">{employes.length} membre{employes.length > 1 ? 's' : ''}</p>

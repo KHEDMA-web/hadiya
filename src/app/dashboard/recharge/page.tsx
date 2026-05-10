@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
+import BackButton from '../_components/BackButton'
 
 const MONTANTS = [2000, 5000, 10000, 20000]
 
@@ -99,12 +100,7 @@ export default function Recharge() {
 
       {/* Header */}
       <div className="bg-[#2C2A25] px-6 py-4 flex items-center gap-4 shadow-lg">
-        <button
-          onClick={() => router.push('/dashboard')}
-          className="w-9 h-9 rounded-full border border-[#4A4840] flex items-center justify-center text-[#F7F4EE] opacity-70 hover:opacity-100 hover:border-[#BA7517] transition-all text-sm flex-shrink-0"
-        >
-          ←
-        </button>
+        <BackButton href="/dashboard" />
         <div>
           <h1 className="text-base font-medium text-[#F7F4EE]">Recharge de carte</h1>
           <p className="text-xs text-[#BA7517]">Ajouter du solde</p>

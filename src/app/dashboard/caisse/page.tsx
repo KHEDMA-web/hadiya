@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
+import BackButton from '../_components/BackButton'
 
 type Item = { id: string; nom: string; prix: number; emoji: string; qty: number; categorie: string }
 
@@ -192,15 +193,7 @@ export default function Caisse() {
       {/* ── Header sticky ── */}
       <div className="bg-[#2C2A25] px-4 pb-3 flex items-center gap-3 shadow-lg flex-shrink-0"
         style={{ paddingTop: 'max(env(safe-area-inset-top), 14px)' }}>
-        <button
-          onClick={() => router.push('/dashboard')}
-          className="w-11 h-11 rounded-full border border-[#4A4840] flex items-center justify-center text-[#F7F4EE] active:bg-[#3A3830] transition-colors"
-          aria-label="Retour"
-          style={{ minWidth: 44, minHeight: 44 }}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="15 18 9 12 15 6" />
-          </svg>
-        </button>
+        <BackButton href="/dashboard" />
         <div className="flex-1">
           <h1 className="text-sm font-medium text-[#F7F4EE] tracking-wide">Caisse POS</h1>
           <p className="text-xs text-[#BA7517]">Point de vente</p>
