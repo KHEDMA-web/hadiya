@@ -3,6 +3,7 @@ import { useEffect, useState, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import { ClientModal } from './_components/ClientModal'
+import { getUserProfile, type UserProfile } from '@/lib/auth'
 
 const CARD_DELAYS = ['[animation-delay:0.15s]','[animation-delay:0.23s]','[animation-delay:0.31s]','[animation-delay:0.39s]','[animation-delay:0.47s]','[animation-delay:0.55s]','[animation-delay:0.63s]','[animation-delay:0.71s]']
 
@@ -18,6 +19,7 @@ export default function Dashboard() {
   const [salonNom, setSalonNom] = useState('')
   const [scanNotif, setScanNotif] = useState('')
   const [modalCarte, setModalCarte] = useState<any>(null)
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
   const router = useRouter()
 
   const [uid, setUid] = useState('')
@@ -39,14 +41,18 @@ export default function Dashboard() {
     const init = async () => {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) { router.push('/login'); return }
+
+      // Charge le profil utilisateur + permissions
+      const profile = await getUserProfile()
+      setUserProfile(profile)
+      setSalonNom(profile?.salonNom || session.user.email?.split('@')[0] || 'Salon')
+
       const [{ count: cartes }, { count: clients }, { count: transactions }] = await Promise.all([
         supabase.from('cartes').select('*', { count: 'exact', head: true }),
         supabase.from('clients').select('*', { count: 'exact', head: true }),
         supabase.from('transactions').select('*', { count: 'exact', head: true }),
       ])
       setStats({ cartes: cartes || 0, clients: clients || 0, transactions: transactions || 0 })
-      const { data: salon } = await supabase.from('salons').select('nom').eq('user_id', session.user.id).single()
-      setSalonNom(salon?.nom || session.user.email?.split('@')[0] || 'Salon')
     }
     init()
 
@@ -156,16 +162,21 @@ export default function Dashboard() {
     }, 100)
   }
 
-  const secondary = [
-    { label: 'Scanner',      sub: 'Lire & débiter une carte',    href: '/dashboard/scanner',      icon: '◈' },
-    { label: 'Caisse POS',   sub: 'Paiement RFID / QR code',     href: '/dashboard/caisse',       icon: '⊞' },
-    { label: 'Clients',      sub: 'Fiches & fidélité',           href: '/dashboard/clients',      icon: '⊹' },
-    { label: 'Recharge',     sub: 'Ajouter du solde',            href: '/dashboard/recharge',     icon: '◎' },
-    { label: 'Produits',     sub: 'Soins, tarifs & catalogue',   href: '/dashboard/produits',     icon: '✦' },
-    { label: 'Statistiques', sub: "Chiffre d'affaires & KPIs",   href: '/dashboard/statistiques', icon: '≋' },
-    { label: 'Historique',   sub: 'Toutes les transactions',     href: '/dashboard/transactions', icon: '≡' },
-    { label: 'Admin',        sub: 'Employés & paramètres',       href: '/dashboard/admin',        icon: '◬' },
+  const allSecondary = [
+    { label: 'Scanner',      sub: 'Lire & débiter une carte',    href: '/dashboard/scanner',      icon: '◈', perm: 'scanner'      },
+    { label: 'Caisse POS',   sub: 'Paiement RFID / QR code',     href: '/dashboard/caisse',       icon: '⊞', perm: 'caisse'       },
+    { label: 'Clients',      sub: 'Fiches & fidélité',           href: '/dashboard/clients',      icon: '⊹', perm: 'clients'      },
+    { label: 'Recharge',     sub: 'Ajouter du solde',            href: '/dashboard/recharge',     icon: '◎', perm: 'recharge'     },
+    { label: 'Produits',     sub: 'Soins, tarifs & catalogue',   href: '/dashboard/produits',     icon: '✦', perm: 'produits'     },
+    { label: 'Statistiques', sub: "Chiffre d'affaires & KPIs",   href: '/dashboard/statistiques', icon: '≋', perm: 'statistiques' },
+    { label: 'Historique',   sub: 'Toutes les transactions',     href: '/dashboard/transactions', icon: '≡', perm: 'transactions' },
+    { label: 'Admin',        sub: 'Employés & paramètres',       href: '/dashboard/admin',        icon: '◬', perm: 'admin'        },
   ]
+
+  // Filtre selon les permissions
+  const secondary = userProfile
+    ? allSecondary.filter(a => userProfile.permissions[a.perm as keyof typeof userProfile.permissions])
+    : allSecondary
 
   const niveau = carte?.niveau || 'Bronze'
 
@@ -209,7 +220,12 @@ export default function Dashboard() {
                 <div className="w-7 h-7 rounded-lg bg-[#BA7517]/15 border border-[#BA7517]/30 flex items-center justify-center">
                   <span className="text-[10px] font-semibold text-[#BA7517] uppercase">{salonNom?.[0] || 'S'}</span>
                 </div>
-                <span className="text-xs font-medium text-[#F7F4EE]/60 max-w-[120px] truncate capitalize">{salonNom}</span>
+                <div className="flex flex-col items-end">
+                  <span className="text-xs font-medium text-[#F7F4EE]/60 max-w-[120px] truncate capitalize">{salonNom}</span>
+                  {userProfile && !userProfile.isOwner && (
+                    <span className="text-[9px] text-[#BA7517]/60 capitalize">{userProfile.prenom} · {userProfile.role}</span>
+                  )}
+                </div>
               </div>
               <button onClick={handleLogout} className="text-[8px] tracking-[0.25em] text-[#F7F4EE] opacity-20 uppercase hover:opacity-50 transition-opacity">Déconnexion</button>
             </div>
@@ -255,8 +271,7 @@ export default function Dashboard() {
                     <button
                       onClick={uid ? handleScan : toggleRfidMode}
                       disabled={scanLoading}
-                      className="bg-[#BA7517] text-white rounded-xl px-4 py-2.5 text-sm font-medium hover:bg-[#A36714] transition-colors disabled:opacity-40 whitespace-nowrap"
-                      style={rfidMode && !uid ? { animation: 'rfid-dot-pulse 1.2s ease-in-out infinite' } : {}}>
+                      className="bg-[#BA7517] text-white rounded-xl px-4 py-2.5 text-sm font-medium hover:bg-[#A36714] transition-colors disabled:opacity-40 whitespace-nowrap">
                       {scanLoading ? '...' : uid ? '→' : '←'}
                     </button>
                   </div>
@@ -306,6 +321,7 @@ export default function Dashboard() {
       </div>
 
       <div className="max-w-[1040px] mx-auto px-6 md:px-12 pt-8 md:pt-11 pb-16 md:pb-[72px]">
+        {/* Bouton nouvelle carte — visible par tous */}
         <button
           className="hd-fade w-full bg-[#BA7517] border border-[#BA7517]/35 rounded-[22px] px-6 py-7 md:px-10 md:py-[34px] mb-3.5 flex items-center justify-between cursor-pointer shadow-[0_8px_36px_rgba(186,117,23,0.28)] text-left hover:bg-[#A36714] hover:shadow-[0_16px_48px_rgba(186,117,23,0.5)] hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200"
           onClick={() => router.push('/dashboard/cartes/nouvelle')}>
@@ -316,19 +332,20 @@ export default function Dashboard() {
           <div className="w-12 h-12 md:w-[60px] md:h-[60px] rounded-2xl bg-white/[0.14] border border-white/[0.22] flex items-center justify-center text-xl md:text-2xl text-[#FFF6E0] shrink-0">✦</div>
         </button>
 
+        {/* Grille des pages filtrée selon permissions */}
         <div className="grid grid-cols-2 gap-3 md:gap-3.5">
           {secondary.map((a, i) => (
             <button key={a.href}
-              className={`hd-fade hd-card text-left cursor-pointer shadow-[0_2px_20px_rgba(20,18,14,0.25)] hover:border-[#BA7517]/35 hover:-translate-y-0.5 hover:shadow-[0_12px_40px_rgba(20,18,14,0.45)] active:-translate-y-px transition-all duration-200 ${CARD_DELAYS[i]} ${i === 7 ? 'col-span-2 flex flex-row items-center gap-4 md:gap-5 py-6 md:py-7 px-6 md:px-9' : 'flex flex-col items-start py-6 md:py-[30px] px-5 md:px-8'}`}
+              className={`hd-fade hd-card text-left cursor-pointer shadow-[0_2px_20px_rgba(20,18,14,0.25)] hover:border-[#BA7517]/35 hover:-translate-y-0.5 hover:shadow-[0_12px_40px_rgba(20,18,14,0.45)] active:-translate-y-px transition-all duration-200 ${CARD_DELAYS[i]} ${i === secondary.length - 1 && secondary.length % 2 !== 0 ? 'col-span-2 flex flex-row items-center gap-4 md:gap-5 py-6 md:py-7 px-6 md:px-9' : 'flex flex-col items-start py-6 md:py-[30px] px-5 md:px-8'}`}
               onClick={() => router.push(a.href)}>
-              <div className={`w-11 h-11 md:w-[46px] md:h-[46px] rounded-xl md:rounded-[13px] bg-[#BA7517]/[0.09] border border-[#BA7517]/[0.22] flex items-center justify-center text-[17px] md:text-[19px] text-[#BA7517] shrink-0 ${i === 7 ? '' : 'mb-4 md:mb-[22px]'}`}>
+              <div className={`w-11 h-11 md:w-[46px] md:h-[46px] rounded-xl md:rounded-[13px] bg-[#BA7517]/[0.09] border border-[#BA7517]/[0.22] flex items-center justify-center text-[17px] md:text-[19px] text-[#BA7517] shrink-0 ${i === secondary.length - 1 && secondary.length % 2 !== 0 ? '' : 'mb-4 md:mb-[22px]'}`}>
                 {a.icon}
               </div>
-              <div className={i === 7 ? 'flex-1' : ''}>
+              <div className={i === secondary.length - 1 && secondary.length % 2 !== 0 ? 'flex-1' : ''}>
                 <p className="text-sm md:text-[15px] font-semibold text-[#F7F4EE] tracking-[0.025em] mb-1">{a.label}</p>
                 <p className="text-[10px] md:text-[11px] text-[#F7F4EE]/30 tracking-[0.05em] leading-relaxed">{a.sub}</p>
               </div>
-              {i === 7 && <span className="text-base md:text-lg text-[#BA7517] opacity-45">→</span>}
+              {i === secondary.length - 1 && secondary.length % 2 !== 0 && <span className="text-base md:text-lg text-[#BA7517] opacity-45">→</span>}
             </button>
           ))}
         </div>
