@@ -451,7 +451,7 @@ export default function Caisse() {
                         animation: rfidMode ? 'rfid-border-glow 1.5s ease-in-out infinite' : 'none',
                       }}
                     />
-                    <button onClick={handleFindCarte} disabled={loading || !uid}
+                    <button onClick={() => handleFindCarte()} disabled={loading || !uid}
                       className="bg-[#BA7517] text-white rounded-2xl px-5 text-xs tracking-[0.15em] uppercase font-semibold active:bg-[#A36714] disabled:opacity-30 transition-colors"
                       style={{ minHeight: 52, minWidth: 64 }}>
                       OK
