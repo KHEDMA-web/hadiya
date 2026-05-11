@@ -19,11 +19,12 @@ export default function CarteIndex() {
     <div style={{ minHeight: '100vh', background: '#2C2A25', display: 'flex',
       alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: 24 }}>
       <div>
-        <p style={{ fontSize: 48, color: '#BA7517', marginBottom: 16 }}>✦</p>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+        <div style={{ width: 32, height: 32, borderRadius: '50%',
+          border: '2px solid rgba(186,117,23,0.2)', borderTopColor: '#BA7517',
+          animation: 'spin 0.8s linear infinite', margin: '0 auto 24px' }} />
         <p style={{ fontSize: 28, fontWeight: 300, color: '#F7F4EE',
           fontFamily: 'Georgia, serif', letterSpacing: '0.1em' }}>H A D I Y A</p>
-        <p style={{ fontSize: 13, color: '#8A8275', marginTop: 12,
-          letterSpacing: '0.2em' }}>Scannez votre QR code</p>
       </div>
     </div>
   )
