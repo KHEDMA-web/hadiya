@@ -18,6 +18,8 @@ export default function Caisse() {
   const [loading, setLoading] = useState(false)
   const [errPay, setErrPay] = useState('')
   const [rfidMode, setRfidMode] = useState(false)
+  const [nfcSupported, setNfcSupported] = useState(false)
+  const [nfcReading, setNfcReading] = useState(false)
 
   const uidRef = useRef<HTMLInputElement>(null)
   const confirmRef = useRef<HTMLButtonElement>(null)
@@ -62,6 +64,30 @@ export default function Caisse() {
     }
   }, [step, rfidMode])
 
+  useEffect(() => {
+    if ('NDEFReader' in window) setNfcSupported(true)
+  }, [])
+
+  const startNFC = async () => {
+    if (!('NDEFReader' in window)) return
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const ndef = new (window as any).NDEFReader()
+      await ndef.scan()
+      setNfcReading(true)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ndef.addEventListener('reading', ({ serialNumber }: any) => {
+        const nfcUid = serialNumber.replace(/:/g, '').toUpperCase()
+        setUid(nfcUid)
+        setNfcReading(false)
+        handleFindCarte(nfcUid)
+      })
+    } catch (err) {
+      console.error('NFC error:', err)
+      setNfcReading(false)
+    }
+  }
+
   const total = Object.values(order).reduce((s, i) => s + i.prix * i.qty, 0)
   const itemCount = Object.values(order).reduce((s, i) => s + i.qty, 0)
   const filteredMenu = filter === 'tous' ? menu : menu.filter(m => m.categorie === filter)
@@ -84,12 +110,13 @@ export default function Caisse() {
     })
   }
 
-  const handleFindCarte = async () => {
-    if (!uid) return
+  const handleFindCarte = async (uidOverride?: string) => {
+    const uidToUse = uidOverride || uid
+    if (!uidToUse) return
     setLoading(true)
     setErrPay('')
     carteFoundRef.current = false
-    const { data } = await supabase.from('cartes').select('*, clients(*)').eq('uid_rfid', uid).single()
+    const { data } = await supabase.from('cartes').select('*, clients(*)').eq('uid_rfid', uidToUse).single()
     if (!data) {
       setErrPay('Carte introuvable')
     } else {
@@ -378,6 +405,31 @@ export default function Caisse() {
                         En attente de la carte...
                       </p>
                     </div>
+                  )}
+
+                  {nfcSupported && (
+                    <button
+                      onClick={startNFC}
+                      disabled={nfcReading}
+                      style={{
+                        width: '100%',
+                        background: nfcReading ? 'rgba(186,117,23,0.2)' : '#2C2A25',
+                        color: nfcReading ? '#BA7517' : '#F7F4EE',
+                        border: '1px solid rgba(186,117,23,0.3)',
+                        borderRadius: 16,
+                        padding: '14px 16px',
+                        fontSize: 13,
+                        fontWeight: 500,
+                        cursor: nfcReading ? 'default' : 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 8,
+                        minHeight: 52,
+                      }}
+                    >
+                      {nfcReading ? '📡 Approcher la carte...' : '📡 Payer par NFC'}
+                    </button>
                   )}
 
                   {/* Input UID */}

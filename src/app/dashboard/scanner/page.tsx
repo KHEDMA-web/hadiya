@@ -1,5 +1,5 @@
 'use client'
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import BackButton from '../_components/BackButton'
@@ -27,8 +27,9 @@ export default function Scanner() {
   const rfidModeRef = useRef(false)
   const carteFoundRef = useRef(false)
 
-  const handleSearch = async () => {
-    if (!uid) return
+  const handleSearch = async (uidOverride?: string) => {
+    const uidToUse = uidOverride || uid
+    if (!uidToUse) return
     setLoading(true)
     setError('')
     setCarte(null)
@@ -38,7 +39,7 @@ export default function Scanner() {
     const { data } = await supabase
       .from('cartes')
       .select('*, clients(*)')
-      .eq('uid_rfid', uid)
+      .eq('uid_rfid', uidToUse)
       .single()
 
     if (!data) {
@@ -116,6 +117,33 @@ export default function Scanner() {
       setError('')
       setSuccess('')
       setTimeout(() => uidRef.current?.focus(), 50)
+    }
+  }
+
+  const [nfcSupported, setNfcSupported] = useState(false)
+  const [nfcReading, setNfcReading] = useState(false)
+
+  useEffect(() => {
+    if ('NDEFReader' in window) setNfcSupported(true)
+  }, [])
+
+  const startNFC = async () => {
+    if (!('NDEFReader' in window)) return
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const ndef = new (window as any).NDEFReader()
+      await ndef.scan()
+      setNfcReading(true)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ndef.addEventListener('reading', ({ serialNumber }: any) => {
+        const nfcUid = serialNumber.replace(/:/g, '').toUpperCase()
+        setUid(nfcUid)
+        setNfcReading(false)
+        handleSearch(nfcUid)
+      })
+    } catch (err) {
+      console.error('NFC error:', err)
+      setNfcReading(false)
     }
   }
 
@@ -220,6 +248,32 @@ export default function Scanner() {
           }}>
             Numéro de carte
           </p>
+          {nfcSupported && (
+            <button
+              onClick={startNFC}
+              disabled={nfcReading}
+              style={{
+                width: '100%',
+                background: nfcReading ? 'rgba(186,117,23,0.2)' : '#2C2A25',
+                color: nfcReading ? '#BA7517' : '#F7F4EE',
+                border: '1px solid rgba(186,117,23,0.3)',
+                borderRadius: 16,
+                padding: '14px 16px',
+                fontSize: 13,
+                fontWeight: 500,
+                cursor: nfcReading ? 'default' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+                minHeight: 52,
+                marginBottom: 12,
+              }}
+            >
+              {nfcReading ? '📡 Approcher la carte...' : '📡 Scanner par NFC'}
+            </button>
+          )}
+
           <div style={{ display: 'flex', gap: '10px' }}>
             <input
               ref={uidRef}
