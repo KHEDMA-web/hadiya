@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -89,7 +90,13 @@ export default function LoginPage() {
           </div>
         </div>
 
-        <p className="text-center text-[8px] tracking-[0.28em] text-[#F7F4EE]/20 uppercase mt-9">
+        <p className="text-center mt-6">
+          <Link href="/register" className="text-[10px] tracking-[0.15em] text-[#F7F4EE]/30 hover:text-[#BA7517] transition-colors uppercase">
+            Créer un compte
+          </Link>
+        </p>
+
+        <p className="text-center text-[8px] tracking-[0.28em] text-[#F7F4EE]/20 uppercase mt-4">
           Carte cadeau &amp; fidélité
         </p>
 

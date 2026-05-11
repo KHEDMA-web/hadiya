@@ -181,7 +181,7 @@ export default function Dashboard() {
   const niveau = carte?.niveau || 'Bronze'
 
   return (
-    <div className="min-h-screen bg-[#F7F4EE]">
+    <div className="min-h-screen bg-[#F7F4EE] overflow-x-hidden">
       <style>{`
         @keyframes rfid-dot-pulse {
           0%, 100% { opacity: 1; transform: scale(1); }
@@ -209,13 +209,13 @@ export default function Dashboard() {
 
       <div className="bg-gradient-to-b from-[#18160F] to-[#2C2A25] border-b border-[#BA7517]/[0.18]">
         <div className="max-w-[1040px] mx-auto px-6 md:px-12 py-6 md:py-8">
-          <div className="flex items-center justify-between mb-6 md:mb-8 pb-5 border-b border-[#F7F4EE]/[0.06]">
+          <div className="flex flex-col items-center gap-3 md:flex-row md:items-center md:justify-between mb-6 md:mb-8 pb-5 border-b border-[#F7F4EE]/[0.06]">
             <div className="flex items-center gap-4">
               <div className="w-6 h-px bg-[#BA7517] opacity-80" />
               <h1 className="font-display text-2xl md:text-3xl font-light tracking-[0.5em] text-[#F7F4EE] uppercase leading-none">Hadiya</h1>
               <div className="w-6 h-px bg-[#BA7517] opacity-80" />
             </div>
-            <div className="flex flex-col items-end gap-1.5">
+            <div className="flex flex-col items-center md:items-end gap-1.5">
               <div className="flex items-center gap-2">
                 <div className="w-7 h-7 rounded-lg bg-[#BA7517]/15 border border-[#BA7517]/30 flex items-center justify-center">
                   <span className="text-[10px] font-semibold text-[#BA7517] uppercase">{salonNom?.[0] || 'S'}</span>
@@ -250,7 +250,7 @@ export default function Dashboard() {
 
             <div className="hidden md:block w-px self-stretch bg-[#F7F4EE]/[0.08]" />
 
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 min-w-0 w-full md:w-auto">
               {!carte ? (
                 <div className="flex flex-col gap-2">
                   <p className="text-[8px] tracking-[0.28em] uppercase text-[#F7F4EE]/30 font-medium mb-1.5">Scanner RFID</p>
@@ -336,9 +336,9 @@ export default function Dashboard() {
         <div className="grid grid-cols-2 gap-3 md:gap-3.5">
           {secondary.map((a, i) => (
             <button key={a.href}
-              className={`hd-fade hd-card text-left cursor-pointer shadow-[0_2px_20px_rgba(20,18,14,0.25)] hover:border-[#BA7517]/35 hover:-translate-y-0.5 hover:shadow-[0_12px_40px_rgba(20,18,14,0.45)] active:-translate-y-px transition-all duration-200 ${CARD_DELAYS[i]} ${i === secondary.length - 1 && secondary.length % 2 !== 0 ? 'col-span-2 flex flex-row items-center gap-4 md:gap-5 py-6 md:py-7 px-6 md:px-9' : 'flex flex-col items-start py-6 md:py-[30px] px-5 md:px-8'}`}
+              className={`hd-fade hd-card text-left cursor-pointer shadow-[0_2px_20px_rgba(20,18,14,0.25)] hover:border-[#BA7517]/35 hover:-translate-y-0.5 hover:shadow-[0_12px_40px_rgba(20,18,14,0.45)] active:-translate-y-px transition-all duration-200 ${CARD_DELAYS[i]} ${i === secondary.length - 1 && secondary.length % 2 !== 0 ? 'col-span-2 flex flex-row items-center gap-4 md:gap-5 py-4 md:py-7 px-5 md:px-9' : 'flex flex-col items-start py-4 md:py-[30px] px-4 md:px-8'}`}
               onClick={() => router.push(a.href)}>
-              <div className={`w-11 h-11 md:w-[46px] md:h-[46px] rounded-xl md:rounded-[13px] bg-[#BA7517]/[0.09] border border-[#BA7517]/[0.22] flex items-center justify-center text-[17px] md:text-[19px] text-[#BA7517] shrink-0 ${i === secondary.length - 1 && secondary.length % 2 !== 0 ? '' : 'mb-4 md:mb-[22px]'}`}>
+              <div className={`w-11 h-11 md:w-[46px] md:h-[46px] rounded-xl md:rounded-[13px] bg-[#BA7517]/[0.09] border border-[#BA7517]/[0.22] flex items-center justify-center text-[17px] md:text-[19px] text-[#BA7517] shrink-0 ${i === secondary.length - 1 && secondary.length % 2 !== 0 ? '' : 'mb-3 md:mb-[22px]'}`}>
                 {a.icon}
               </div>
               <div className={i === secondary.length - 1 && secondary.length % 2 !== 0 ? 'flex-1' : ''}>
