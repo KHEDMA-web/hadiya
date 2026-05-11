@@ -63,6 +63,7 @@ export default function CartePage() {
       if (error || !data) { setError('Carte introuvable'); setLoading(false); return }
 
       setCarte(data)
+      localStorage.setItem('hadiya_last_uid', uid as string)
 
       // ── Charge le numéro WhatsApp depuis le salon lié ──
       if (data.salon_id) {
