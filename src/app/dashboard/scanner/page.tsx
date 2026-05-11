@@ -289,7 +289,7 @@ export default function Scanner() {
               }}
             />
             <button
-              onClick={handleSearch}
+              onClick={() => handleSearch()}
               disabled={loading || !uid}
               className="hd-btn-gold"
               style={{ whiteSpace: 'nowrap', padding: '14px 20px' }}
