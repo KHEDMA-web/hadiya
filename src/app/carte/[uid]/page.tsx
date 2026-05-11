@@ -64,6 +64,7 @@ export default function CartePage() {
 
       setCarte(data)
       localStorage.setItem('hadiya_last_uid', uid as string)
+      document.cookie = `hadiya_uid=${uid}; path=/; max-age=31536000; SameSite=Lax`
 
       // ── Charge le numéro WhatsApp depuis le salon lié ──
       if (data.salon_id) {
