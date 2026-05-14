@@ -6,6 +6,7 @@ export async function POST(req: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   )
+  const { randomUUID } = await import('crypto')
   const body = await req.json()
 
   // Ignorer tout ce qui n'est pas un paiement confirmé
@@ -53,23 +54,21 @@ export async function POST(req: NextRequest) {
   }
 
   // 2. Créer la carte cadeau (expire dans 1 an)
+  const uid = randomUUID()
   const expiration = new Date()
   expiration.setFullYear(expiration.getFullYear() + 1)
 
   const { data: carte, error: carteError } = await supabase
     .from('cartes')
     .insert({
-      client_id:     clientId,
-      solde:         amount,
-      solde_initial: amount,
-      statut:        'active',
-      type:          'cadeau',
-      offert_par:    meta.offeredBy,
-      message:       meta.message || null,
-      expire_le:     expiration.toISOString(),
-      source:        'online',
-      niveau:        'Bronze',
-      points:        0,
+      client_id:       clientId,
+      uid_rfid:        uid,
+      type:            'cadeau',
+      solde:           amount,
+      message_perso:   meta.message || null,
+      offert_par:      meta.offeredBy,
+      date_expiration: expiration.toISOString(),
+      source:          'online',
     })
     .select('id')
     .single()
@@ -80,8 +79,8 @@ export async function POST(req: NextRequest) {
 
   // 3. Enregistrer la transaction
   await supabase.from('transactions').insert({
-    carte_id:    carte.id,
-    type:        'credit',
+    carte_id:    carte!.id,
+    type:        'cadeau',
     montant:     amount,
     description: `Carte cadeau en ligne — offerte par ${meta.offeredBy}`,
   })
