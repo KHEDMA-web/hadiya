@@ -253,11 +253,14 @@ export default function Dashboard() {
               <div className="flex items-center gap-1">
                 <button
                   onClick={() => router.push('/dashboard/notifications')}
-                  className="relative text-[#F7F4EE]/40 hover:text-[#F7F4EE]/80 transition-colors mr-2"
+                  className="relative flex items-center justify-center w-8 h-8 rounded-xl bg-[#F7F4EE]/[0.07] border border-[#F7F4EE]/[0.1] hover:border-[#BA7517]/50 transition-all mr-2"
                 >
-                  <span className="text-base">🔔</span>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="text-[#F7F4EE]/50">
+                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                    <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                  </svg>
                   {unreadCount > 0 && (
-                    <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 bg-[#BA7517] rounded-full text-[8px] text-white flex items-center justify-center font-bold px-0.5">
+                    <span className="absolute -top-1 -right-1 min-w-[16px] h-4 bg-[#BA7517] rounded-full text-[8px] text-white flex items-center justify-center font-bold px-0.5 shadow-lg">
                       {unreadCount > 9 ? '9+' : unreadCount}
                     </span>
                   )}
