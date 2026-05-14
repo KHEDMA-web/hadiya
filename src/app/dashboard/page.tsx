@@ -29,6 +29,7 @@ export default function Dashboard() {
   const [scanError, setScanError] = useState('')
   const [scanSuccess, setScanSuccess] = useState('')
   const [rfidMode, setRfidMode] = useState(false)
+  const [unreadCount, setUnreadCount] = useState(0)
 
   const uidRef = useRef<HTMLInputElement>(null)
   const montantRef = useRef<HTMLInputElement>(null)
@@ -53,6 +54,12 @@ export default function Dashboard() {
         supabase.from('transactions').select('*', { count: 'exact', head: true }),
       ])
       setStats({ cartes: cartes || 0, clients: clients || 0, transactions: transactions || 0 })
+
+      const { count: notifCount } = await supabase
+        .from('notifications')
+        .select('*', { count: 'exact', head: true })
+        .eq('lu', false)
+      setUnreadCount(notifCount || 0)
     }
     init()
 
@@ -84,7 +91,23 @@ export default function Dashboard() {
         console.log('📡 Realtime status:', status)
       })
 
-    return () => { supabase.removeChannel(channel) }
+    const notifChannel = supabase
+      .channel('notifications-bell')
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'notifications',
+      }, (payload: any) => {
+        setUnreadCount((c) => c + 1)
+        setScanNotif(`🎁 ${payload.new.titre}`)
+        setTimeout(() => setScanNotif(''), 5000)
+      })
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+      supabase.removeChannel(notifChannel)
+    }
   }, [])
 
   const handleLogout = async () => {
@@ -227,7 +250,20 @@ export default function Dashboard() {
                   )}
                 </div>
               </div>
-              <button onClick={handleLogout} className="text-[8px] tracking-[0.25em] text-[#F7F4EE] opacity-20 uppercase hover:opacity-50 transition-opacity">Déconnexion</button>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => router.push('/dashboard/notifications')}
+                  className="relative text-[#F7F4EE]/40 hover:text-[#F7F4EE]/80 transition-colors mr-2"
+                >
+                  <span className="text-base">🔔</span>
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 bg-[#BA7517] rounded-full text-[8px] text-white flex items-center justify-center font-bold px-0.5">
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </span>
+                  )}
+                </button>
+                <button onClick={handleLogout} className="text-[8px] tracking-[0.25em] text-[#F7F4EE] opacity-20 uppercase hover:opacity-50 transition-opacity">Déconnexion</button>
+              </div>
             </div>
           </div>
 
