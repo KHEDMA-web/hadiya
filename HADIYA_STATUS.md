@@ -442,7 +442,29 @@ N8N_WEBHOOK_URL=https://n8n.domain.com/webhook/xxx   # optionnel
 
 ---
 
-## 7. CE QUI RESTE À FAIRE ⏳
+## 7. CHECKLIST SESSION EN COURS 🎯
+
+> **Workflow :** Au début de chaque session, Claude lit cette section et demande ce qui est fait. Tu coches, il met à jour et on continue.
+
+### Sprint actuel — À faire
+- [ ] **Plans d'abonnement** — modifier les offres dans `src/app/dashboard/admin/parametres/page.tsx` (section Abonnement) : revoir prix, descriptions, fonctionnalités incluses
+- [ ] **Avantages fidélité par niveau** — ajouter dans `src/app/dashboard/admin/page.tsx` une section où le salon configure les avantages par niveau (Bronze / Argent / Or / Platine) : ex. "Bronze = -5%, Platine = massage offert". Chaque salon personnalise ses promos
+- [ ] **Page scanner** `src/app/dashboard/scanner/page.tsx` — à décider : améliorer (meilleure UX, historique des scans) ou supprimer si la fonctionnalité est couverte par le dashboard principal
+- [ ] **Page statistiques** `src/app/dashboard/statistiques/page.tsx` — améliorer : meilleurs graphiques, plus de KPIs, filtres par période, export CSV
+- [ ] **Page produits** `src/app/dashboard/produits/page.tsx` — ajouter import en masse : coller une liste de produits (CSV ou texte) pour tout créer d'un coup sans ajouter un par un
+- [ ] **Passer Chargily en production** — changer `CHARGILY_SECRET_KEY` dans Vercel + URL dans `/api/checkout/route.ts` (en attente des clés Chargily)
+- [ ] **SQL Supabase** — exécuter : `ALTER TABLE clients ADD COLUMN IF NOT EXISTS salon_id uuid REFERENCES salons(id);` et `ALTER TABLE salons ADD COLUMN IF NOT EXISTS slug text UNIQUE;`
+
+### ✅ Fait récemment
+- [x] Page paiement unique par salon `/gift-card/[slug]`
+- [x] Sécurité webhook HMAC sha256 (Chargily)
+- [x] CLAUDE.md + HADIYA_STATUS.md mis à jour
+- [x] `.claude/settings.json` configuré
+- [x] `salon_id` transmis dans checkout + webhook
+
+---
+
+## 8. CE QUI RESTE À FAIRE (backlog) ⏳
 
 ### Bugs connus
 - [ ] **Auth middleware passif** : Le middleware laisse passer les routes `/dashboard/*` sans token (`NextResponse.next()`) et délègue la vérification au client. Un utilisateur non connecté voit un flash avant la redirection.
@@ -476,7 +498,7 @@ N8N_WEBHOOK_URL=https://n8n.domain.com/webhook/xxx   # optionnel
 
 ---
 
-## 8. COMMANDES UTILES
+## 9. COMMANDES UTILES
 
 ```bash
 # Lancer le serveur de développement
@@ -505,7 +527,7 @@ npm list --depth=0
 
 ---
 
-## 9. URLs IMPORTANTES
+## 10. URLs IMPORTANTES
 
 | Service | URL |
 |---|---|
@@ -522,7 +544,7 @@ npm list --depth=0
 
 ---
 
-## 10. DESIGN SYSTEM
+## 11. DESIGN SYSTEM
 
 ### Couleurs
 | Token | Hex | Usage |

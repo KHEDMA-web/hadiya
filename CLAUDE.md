@@ -108,6 +108,9 @@ N8N_WEBHOOK_URL                 # optionnel
 - Pas de bouton logout dans le dashboard
 - `commandes` et `commande_items` référencées dans le schéma mais pages non créées
 
+## Workflow session
+Au début de chaque session, lire la section "CHECKLIST SESSION EN COURS" dans `HADIYA_STATUS.md` et présenter les tâches en attente à l'utilisateur. Quand une tâche est terminée, la cocher dans le fichier immédiatement.
+
 ## Conventions de code
 - TypeScript strict — pas de `any`
 - Pas de commentaires sauf si le WHY est non-obvious
