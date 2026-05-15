@@ -349,7 +349,8 @@ N8N_WEBHOOK_URL=https://n8n.domain.com/webhook/xxx   # optionnel
 | `telephone` | text | |
 | `wilaya` | text | Wilaya algérienne |
 | `owner_id` | uuid | FK → auth.users |
-| `slug` | text | Unique — URL de paiement `/gift-card/[slug]` ⚠️ à ajouter |
+| `slug` | text | Unique — URL de paiement `/gift-card/[slug]` ✅ |
+| `avantages_fidelite` | jsonb | `{"bronze":"","argent":"","or":"","platine":""}` — avantages affichés sur la carte client ✅ |
 | `fidelite_actif` | boolean | Défaut: true |
 | `points_par_100da` | integer | Défaut: 2 |
 | `seuil_argent` | integer | Défaut: 500 pts |
@@ -447,19 +448,23 @@ N8N_WEBHOOK_URL=https://n8n.domain.com/webhook/xxx   # optionnel
 > **Workflow :** Au début de chaque session, Claude lit cette section et demande ce qui est fait. Tu coches, il met à jour et on continue.
 
 ### Sprint actuel — À faire
-- [ ] **Plans d'abonnement** — modifier les offres dans `src/app/dashboard/admin/parametres/page.tsx` (section Abonnement) : revoir prix, descriptions, fonctionnalités incluses
-- [ ] **Avantages fidélité par niveau** — ajouter dans `src/app/dashboard/admin/page.tsx` une section où le salon configure les avantages par niveau (Bronze / Argent / Or / Platine) : ex. "Bronze = -5%, Platine = massage offert". Chaque salon personnalise ses promos
-- [ ] **Page scanner** `src/app/dashboard/scanner/page.tsx` — à décider : améliorer (meilleure UX, historique des scans) ou supprimer si la fonctionnalité est couverte par le dashboard principal
-- [ ] **Page statistiques** `src/app/dashboard/statistiques/page.tsx` — améliorer : meilleurs graphiques, plus de KPIs, filtres par période, export CSV
-- [ ] **Page produits** `src/app/dashboard/produits/page.tsx` — ajouter import en masse : coller une liste de produits (CSV ou texte) pour tout créer d'un coup sans ajouter un par un
+- [x] **Plans d'abonnement** — liste de fonctionnalités par plan + badge "Actuel"
+- [x] **Avantages fidélité par niveau** — config Bronze/Argent/Or/Platine dans Paramètres + carte client dynamique
+- [x] **Page scanner** — historique des 6 derniers débits (auto-refresh)
+- [x] **Page statistiques** — export CSV de la période sélectionnée (bouton ↓ CSV)
+- [x] **Page produits** — import en masse : coller Nom, Prix, Emoji, Catégorie → prévisualisation → import
 - [ ] **Passer Chargily en production** — changer `CHARGILY_SECRET_KEY` dans Vercel + URL dans `/api/checkout/route.ts` (en attente des clés Chargily)
-- [ ] **SQL Supabase** — exécuter : `ALTER TABLE clients ADD COLUMN IF NOT EXISTS salon_id uuid REFERENCES salons(id);` et `ALTER TABLE salons ADD COLUMN IF NOT EXISTS slug text UNIQUE;`
+- [x] **SQL Supabase** — exécuter : `ALTER TABLE clients ADD COLUMN IF NOT EXISTS salon_id uuid REFERENCES salons(id);` et `ALTER TABLE salons ADD COLUMN IF NOT EXISTS slug text UNIQUE;` + `avantages_fidelite jsonb`
 
 ### ✅ Fait récemment
+- [x] **Plans d'abonnement** — liste de fonctionnalités par plan (parametres Abonnement)
+- [x] **Avantages fidélité par niveau** — config par salon dans onglet Fidélité + carte client dynamique
+- [x] **Scanner** — historique des 6 derniers débits auto-rafraîchi
+- [x] **Statistiques** — export CSV période sélectionnée (BOM UTF-8 pour Excel)
+- [x] **Produits** — import en masse (coller liste → prévisualiser → importer)
+- [x] **SQL Supabase** — `clients.salon_id`, `salons.slug`, `salons.avantages_fidelite`
 - [x] Page paiement unique par salon `/gift-card/[slug]`
 - [x] Sécurité webhook HMAC sha256 (Chargily)
-- [x] CLAUDE.md + HADIYA_STATUS.md mis à jour
-- [x] `.claude/settings.json` configuré
 - [x] `salon_id` transmis dans checkout + webhook
 
 ---
@@ -488,9 +493,10 @@ N8N_WEBHOOK_URL=https://n8n.domain.com/webhook/xxx   # optionnel
 - [x] **Page paiement par salon** : `/gift-card/[slug]` — chaque salon a son URL unique, `salon_id` attaché à la carte/client
 
 ### Colonnes Supabase à vérifier / ajouter
-- [x] `cartes.salon_id` → déjà présente
-- [ ] `clients.salon_id` → à ajouter : `ALTER TABLE clients ADD COLUMN IF NOT EXISTS salon_id uuid REFERENCES salons(id);`
-- [ ] `salons.slug` → à ajouter : `ALTER TABLE salons ADD COLUMN IF NOT EXISTS slug text UNIQUE;`
+- [x] `cartes.salon_id` → présente
+- [x] `clients.salon_id` → ajoutée ✅
+- [x] `salons.slug` → ajoutée ✅
+- [x] `salons.avantages_fidelite` → ajoutée ✅
 - [ ] `transactions.salon_id` → filtrage par salon
 - [ ] `notifications.salon_id` → isoler les notifications par salon
 - [ ] `salons.logo_url` → pour personnalisation carte client

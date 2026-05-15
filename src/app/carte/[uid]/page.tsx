@@ -13,11 +13,14 @@ const NIVEAU_CONFIG: Record<string, {
 }
 const NEXT_LEVEL: Record<string, string | null> = { Bronze: 'Argent', Argent: 'Or', Or: 'Platine', Platine: null }
 const LEVEL_THRESHOLD: Record<string, number> = { Bronze: 1000, Argent: 3000, Or: 8000, Platine: 8000 }
-const PERKS: Record<string, string[]> = {
+const DEFAULT_PERKS: Record<string, string[]> = {
   Bronze:  ['Offre anniversaire surprise', 'Points cumulés à chaque visite'],
   Argent:  ['Réduction − 5 % sur tous les soins', 'Points cumulés à chaque visite'],
   Or:      ['Réduction − 10 %', 'Accès prioritaire aux réservations', 'Points cumulés à chaque visite'],
   Platine: ['Réduction − 20 %', 'Soin offert par trimestre', 'Accès prioritaire & exclusif', 'Points cumulés à chaque visite'],
+}
+const NIVEAU_KEY: Record<string, 'bronze' | 'argent' | 'or' | 'platine'> = {
+  Bronze: 'bronze', Argent: 'argent', Or: 'or', Platine: 'platine',
 }
 
 const serif = '"Cormorant Garamond", Georgia, serif'
@@ -28,6 +31,7 @@ export default function CartePage() {
   const [carte, setCarte] = useState<any>(null)
   const [transactions, setTransactions] = useState<any[]>([])
   const [whatsappSalon, setWhatsappSalon] = useState('213555000000')
+  const [avantagesSalon, setAvantagesSalon] = useState<Record<string, string> | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [showInstall, setShowInstall] = useState(false)
@@ -70,19 +74,19 @@ export default function CartePage() {
       if (data.salon_id) {
         const { data: salonData } = await supabase
           .from('salons')
-          .select('telephone, whatsapp')
+          .select('telephone, whatsapp, avantages_fidelite')
           .eq('id', data.salon_id)
           .single()
 
         if (salonData) {
-          // Priorité : whatsapp > telephone > défaut
           const numero = salonData.whatsapp || salonData.telephone || ''
           if (numero) {
-            // Normalise le numéro : retire +, espaces, tirets
             const clean = numero.replace(/[\s\-\+]/g, '')
-            // Si commence par 0, remplace par 213
             const normalized = clean.startsWith('0') ? '213' + clean.slice(1) : clean
             setWhatsappSalon(normalized)
+          }
+          if (salonData.avantages_fidelite) {
+            setAvantagesSalon(salonData.avantages_fidelite)
           }
         }
       }
@@ -146,7 +150,10 @@ export default function CartePage() {
   const maxPts   = LEVEL_THRESHOLD[niveau]
   const pct      = Math.min((carte.points / maxPts) * 100, 100)
   const prochain = NEXT_LEVEL[niveau]
-  const perks    = PERKS[niveau] || PERKS.Bronze
+
+  const niveauKey = NIVEAU_KEY[niveau]
+  const avantageTexte = avantagesSalon?.[niveauKey]?.trim()
+  const perks: string[] = avantageTexte ? [avantageTexte] : (DEFAULT_PERKS[niveau] || DEFAULT_PERKS.Bronze)
 
   const wa = `https://wa.me/${whatsappSalon}?text=${encodeURIComponent(`Bonjour, je souhaite réserver un soin avec ma carte Hadiya (${carte.clients?.prenom} ${carte.clients?.nom}).`)}`
 

@@ -65,16 +65,16 @@ src/
 - Client : TOUJOURS `import { supabase } from '@/lib/supabase'`
 - Webhook (`/api/webhook/chargily`) : utilise `createClient` avec `SUPABASE_SERVICE_ROLE_KEY` (bypass RLS)
 - Realtime actif sur : `scans` (INSERT) · `notifications` (INSERT) · `cartes` (UPDATE) · `transactions` (INSERT)
-- PAS de `salon_id` sur les tables actuellement — RLS gère l'isolation
+- `clients.salon_id` et `salons.slug` sont présents en DB
 
 ## Base de données (tables)
 `salons` `employes` `clients` `cartes` `transactions` `menu_items` `notifications` `scans`
 
 Colonnes clés :
 - `cartes` : uid_rfid, type(cadeau/fidelite), solde, points, niveau, statut, message_perso, offert_par, date_expiration, source(online/comptoir), first_opened_at
-- `clients` : telephone(lookup unique), niveau, points, allergies, preferences_massage, notes_praticien
+- `clients` : telephone(lookup unique), niveau, points, allergies, preferences_massage, notes_praticien, salon_id
 - `employes` : permissions(jsonb), actif, role(caissier/receptionniste/manager)
-- `salons` : owner_id, fidelite_actif, points_par_100da, seuil_argent/or/platine
+- `salons` : owner_id, slug(unique), fidelite_actif, points_par_100da, seuil_argent/or/platine, avantages_fidelite(jsonb)
 
 ## Auth & Permissions
 - Owner : `salons.owner_id === auth.user.id` → toutes permissions

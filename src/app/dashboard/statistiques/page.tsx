@@ -186,6 +186,7 @@ export default function Statistiques() {
   const [topProduits, setTopProduits]       = useState<ProduitStat[]>([])
   const [stockAlerts, setStockAlerts]       = useState<StockAlert[]>([])
   const [stockValeur, setStockValeur]       = useState(0)
+  const [allTx, setAllTx]                  = useState<any[]>([])
 
   useEffect(() => { fetchAll() }, [periode])
 
@@ -313,7 +314,33 @@ export default function Statistiques() {
     setTopProduits(topP)
     setStockAlerts(alerts)
     setStockValeur(valStock)
+    setAllTx(txF)
     setLoading(false)
+  }
+
+  const exportCSV = () => {
+    const headers = ['Date', 'Heure', 'Type', 'Montant (DA)', 'Points gagnés', 'Client', 'Niveau']
+    const rows = allTx.map(t => {
+      const d = new Date(t.created_at)
+      const client = (t as any).cartes?.clients
+      return [
+        d.toLocaleDateString('fr-FR'),
+        d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+        t.type,
+        t.montant || 0,
+        (t as any).points_gagnes || 0,
+        client ? `${client.prenom} ${client.nom}` : '',
+        (t as any).cartes?.niveau || '',
+      ]
+    })
+    const csv = [headers, ...rows].map(r => r.map(v => `"${v}"`).join(',')).join('\n')
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `hadiya-${periode}-${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
   }
 
   const periodeLabel = periode === 'jour' ? "aujourd'hui" : periode === '7j' ? '7 j' : periode === '30j' ? '30 j' : periode === '3m' ? '3 mois' : 'tout'
@@ -326,10 +353,14 @@ export default function Statistiques() {
       <div className="bg-[#2C2A25] px-5 pt-4 pb-0 shadow-lg">
         <div className="flex items-center gap-3 mb-4">
           <BackButton href="/dashboard" />
-          <div>
+          <div className="flex-1">
             <h1 className="text-base font-medium text-[#F7F4EE]">Statistiques</h1>
             <p className="text-[10px] text-[#BA7517] tracking-wider">Performance & analytiques</p>
           </div>
+          <button onClick={exportCSV} disabled={allTx.length === 0}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[10px] font-medium transition-all bg-[#3A3830] text-[#8A8275] hover:text-[#F7F4EE] disabled:opacity-30 flex-shrink-0">
+            ↓ CSV
+          </button>
         </div>
         <div className="flex gap-2 overflow-x-auto pb-4" style={{ scrollbarWidth: 'none' }}>
           {PERIODES.map(p => (

@@ -11,6 +11,13 @@ function toSlug(nom: string) {
     .replace(/^-|-$/g, '')
 }
 
+type AvantagesFidelite = {
+  bronze: string
+  argent: string
+  or: string
+  platine: string
+}
+
 type Salon = {
   id: string
   nom: string
@@ -27,6 +34,7 @@ type Salon = {
   seuil_argent: number
   seuil_or: number
   seuil_platine: number
+  avantages_fidelite: AvantagesFidelite | null
 }
 
 const WILAYAS = [
@@ -37,19 +45,33 @@ const WILAYAS = [
 ]
 
 const ABONNEMENTS = [
-  { id: 'starter', label: 'Starter',  prix: '2 900 DA/mois', desc: 'Jusqu\'à 100 cartes' },
-  { id: 'pro',     label: 'Pro',      prix: '5 900 DA/mois', desc: 'Cartes illimitées + caisse POS' },
-  { id: 'premium', label: 'Premium',  prix: '9 900 DA/mois', desc: 'Multi-salon + WhatsApp auto' },
+  {
+    id: 'starter', label: 'Starter', prix: '2 900 DA/mois',
+    desc: 'Pour les salons qui démarrent',
+    features: ["Jusqu'à 200 cartes actives", 'Carte cadeau & fidélité', 'Dashboard & statistiques', 'App mobile client (PWA)'],
+  },
+  {
+    id: 'pro', label: 'Pro', prix: '5 900 DA/mois',
+    desc: 'Pour les salons en croissance',
+    features: ['Cartes illimitées', 'Caisse POS (NFC / RFID)', 'Gestion employés & permissions', 'Export des données CSV', 'Tout Starter inclus'],
+  },
+  {
+    id: 'premium', label: 'Premium', prix: '9 900 DA/mois',
+    desc: 'Pour les salons établis',
+    features: ['WhatsApp automatique (n8n)', 'Rappels anniversaire clients', 'Multi-salon', 'Support prioritaire', 'Tout Pro inclus'],
+  },
 ]
 
 export default function Parametres() {
   const router = useRouter()
+  const defaultAvantages: AvantagesFidelite = { bronze: '', argent: '', or: '', platine: '' }
   const [salon, setSalon] = useState<Partial<Salon>>({
     fidelite_actif: true,
     points_par_100da: 2,
     seuil_argent: 500,
     seuil_or: 1500,
     seuil_platine: 3000,
+    avantages_fidelite: defaultAvantages,
   })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -68,11 +90,12 @@ export default function Parametres() {
       const { data } = await supabase.from('salons').select('*').eq('email', email).single()
       if (data) setSalon({
         ...data,
-        fidelite_actif:   data.fidelite_actif   ?? true,
-        points_par_100da: data.points_par_100da  ?? 2,
-        seuil_argent:     data.seuil_argent      ?? 500,
-        seuil_or:         data.seuil_or          ?? 1500,
-        seuil_platine:    data.seuil_platine      ?? 3000,
+        fidelite_actif:      data.fidelite_actif      ?? true,
+        points_par_100da:    data.points_par_100da     ?? 2,
+        seuil_argent:        data.seuil_argent         ?? 500,
+        seuil_or:            data.seuil_or             ?? 1500,
+        seuil_platine:       data.seuil_platine        ?? 3000,
+        avantages_fidelite:  data.avantages_fidelite   ?? defaultAvantages,
       })
       setLoading(false)
     }
@@ -97,11 +120,12 @@ export default function Parametres() {
       }
     } else if (activeSection === 'fidelite') {
       payload = {
-        fidelite_actif:   salon.fidelite_actif,
-        points_par_100da: salon.points_par_100da,
-        seuil_argent:     salon.seuil_argent,
-        seuil_or:         salon.seuil_or,
-        seuil_platine:    salon.seuil_platine,
+        fidelite_actif:     salon.fidelite_actif,
+        points_par_100da:   salon.points_par_100da,
+        seuil_argent:       salon.seuil_argent,
+        seuil_or:           salon.seuil_or,
+        seuil_platine:      salon.seuil_platine,
+        avantages_fidelite: salon.avantages_fidelite ?? defaultAvantages,
       }
     }
 
@@ -369,6 +393,35 @@ export default function Parametres() {
                       )}
                     </div>
 
+                    <div className="bg-white border border-[#C4B89E] rounded-2xl p-6 shadow-md flex flex-col gap-4">
+                      <div className="flex items-center gap-2 mb-1">
+                        <div className="w-1 h-5 bg-[#BA7517] rounded-full" />
+                        <p className="text-xs font-semibold text-[#2C2A25] uppercase tracking-wider">Avantages par niveau</p>
+                      </div>
+                      <p className="text-[11px] text-[#8A8275] -mt-2">Décrivez ce que chaque niveau apporte à vos clients (affiché sur leur carte).</p>
+                      {([
+                        { key: 'bronze',  label: 'Bronze',  color: '#C4813A', bg: 'rgba(196,129,58,0.08)',  placeholder: 'Ex : Accès prioritaire aux réservations' },
+                        { key: 'argent',  label: 'Argent',  color: '#8A8275', bg: 'rgba(138,130,117,0.08)', placeholder: 'Ex : -5% sur tous les soins' },
+                        { key: 'or',      label: 'Or',      color: '#BA7517', bg: 'rgba(186,117,23,0.08)',  placeholder: 'Ex : Soin offert par trimestre' },
+                        { key: 'platine', label: 'Platine', color: '#7C6FAE', bg: 'rgba(124,111,174,0.08)', placeholder: 'Ex : Massage offert + accès VIP' },
+                      ] as const).map(({ key, label, color, bg, placeholder }) => (
+                        <div key={key} className="flex flex-col gap-1.5 p-4 rounded-xl border border-[#E8E2D5]" style={{ background: bg }}>
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide self-start"
+                            style={{ background: `${color}20`, color }}>{label}</span>
+                          <input
+                            type="text"
+                            value={salon.avantages_fidelite?.[key] ?? ''}
+                            onChange={e => setSalon(s => ({
+                              ...s,
+                              avantages_fidelite: { ...(s.avantages_fidelite ?? defaultAvantages), [key]: e.target.value }
+                            }))}
+                            placeholder={placeholder}
+                            className="w-full border border-[#C4B89E] rounded-xl px-4 py-3 text-sm text-[#2C2A25] outline-none focus:border-[#BA7517] focus:ring-1 focus:ring-[#BA7517]/20 bg-white placeholder:text-[#B0A898]"
+                          />
+                        </div>
+                      ))}
+                    </div>
+
                     <div className="bg-[#2C2A25] rounded-2xl p-5 flex flex-col gap-2">
                       <p className="text-[9px] tracking-[0.2em] uppercase text-[#F7F4EE]/40 mb-1">Résumé du programme</p>
                       {[
@@ -412,22 +465,33 @@ export default function Parametres() {
                       style={{ background: 'rgba(16,185,129,0.1)', color: '#10B981', border: '1px solid rgba(16,185,129,0.2)' }}>Actif</span>
                   </div>
                 </div>
-                {ABONNEMENTS.map(ab => (
-                  <div key={ab.id} className={`bg-white border rounded-2xl p-5 shadow-md transition-all ${(salon.abonnement || 'starter') === ab.id ? 'border-[#BA7517]' : 'border-[#C4B89E]'}`}>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-semibold text-[#2C2A25]">{ab.label}</p>
-                        <p className="text-[11px] text-[#8A8275] mt-0.5">{ab.desc}</p>
+                {ABONNEMENTS.map(ab => {
+                  const isCurrent = (salon.abonnement || 'starter') === ab.id
+                  return (
+                    <div key={ab.id} className={`bg-white border rounded-2xl p-5 shadow-md transition-all ${isCurrent ? 'border-[#BA7517] shadow-[0_0_0_1px_rgba(186,117,23,0.15)]' : 'border-[#C4B89E]'}`}>
+                      <div className="flex items-start justify-between gap-3 mb-3">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-semibold text-[#2C2A25]">{ab.label}</p>
+                            {isCurrent && (
+                              <span className="text-[9px] px-2 py-0.5 rounded-full font-medium" style={{ background: 'rgba(186,117,23,0.1)', color: '#BA7517' }}>Actuel</span>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-[#8A8275] mt-0.5">{ab.desc}</p>
+                        </div>
+                        <p className="text-sm font-semibold flex-shrink-0" style={{ color: '#BA7517' }}>{ab.prix}</p>
                       </div>
-                      <div className="text-right">
-                        <p className="text-sm font-semibold" style={{ color: '#BA7517' }}>{ab.prix}</p>
-                        {(salon.abonnement || 'starter') === ab.id && (
-                          <span className="text-[9px]" style={{ color: '#BA7517' }}>Plan actuel</span>
-                        )}
+                      <div className="flex flex-col gap-1.5 pt-3 border-t border-[#EDE8DE]">
+                        {ab.features.map((f, i) => (
+                          <div key={i} className="flex items-center gap-2">
+                            <span className="text-[10px] text-[#BA7517] flex-shrink-0">✓</span>
+                            <p className="text-[11px] text-[#8A8275]">{f}</p>
+                          </div>
+                        ))}
                       </div>
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
                 <p className="text-[10px] text-[#8A8275] text-center mt-1">
                   Pour changer de plan, contactez le support Hadiya via WhatsApp.
                 </p>

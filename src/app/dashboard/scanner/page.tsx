@@ -20,12 +20,23 @@ export default function Scanner() {
   const [success, setSuccess] = useState('')
   const [error, setError] = useState('')
   const [rfidMode, setRfidMode] = useState(false)
+  const [recentDebits, setRecentDebits] = useState<any[]>([])
 
   const uidRef = useRef<HTMLInputElement>(null)
   const montantRef = useRef<HTMLInputElement>(null)
   // Refs mirror state so blur/timeout callbacks always see the latest values
   const rfidModeRef = useRef(false)
   const carteFoundRef = useRef(false)
+
+  const loadRecentDebits = async () => {
+    const { data } = await supabase
+      .from('transactions')
+      .select('id, montant, created_at, cartes(niveau, clients(prenom, nom))')
+      .eq('type', 'debit')
+      .order('created_at', { ascending: false })
+      .limit(6)
+    setRecentDebits(data ?? [])
+  }
 
   const handleSearch = async (uidOverride?: string) => {
     const uidToUse = uidOverride || uid
@@ -83,6 +94,7 @@ export default function Scanner() {
     setSuccess(`${amt.toLocaleString('fr-FR')} DA débités · +${pts} points`)
     setMontant('')
     setLoading(false)
+    loadRecentDebits()
 
     // En mode RFID : réinitialiser après 2s pour le prochain client
     if (rfidModeRef.current) {
@@ -146,6 +158,8 @@ export default function Scanner() {
       setNfcReading(false)
     }
   }
+
+  useEffect(() => { loadRecentDebits() }, [])
 
   const niveau = carte?.niveau || 'Bronze'
   const avatarColors = NIVEAU_DARK[niveau] || NIVEAU_DARK.Bronze
@@ -413,6 +427,40 @@ export default function Scanner() {
                   {loading ? '...' : 'Valider'}
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Historique récent */}
+        {recentDebits.length > 0 && (
+          <div className="hd-card" style={{ padding: '20px 24px' }}>
+            <p style={{ fontSize: '8px', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.28em', color: 'rgba(247,244,238,0.35)', marginBottom: '16px' }}>
+              Débits récents
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {recentDebits.map((t, i) => {
+                const niv = (t as any).cartes?.niveau || 'Bronze'
+                const colors = NIVEAU_DARK[niv] || NIVEAU_DARK.Bronze
+                const client = (t as any).cartes?.clients
+                return (
+                  <div key={t.id || i} style={{ display: 'flex', alignItems: 'center', gap: '12px', paddingBottom: '10px', borderBottom: i < recentDebits.length - 1 ? '1px solid rgba(247,244,238,0.06)' : 'none' }}>
+                    <div style={{ width: 32, height: 32, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 600, flexShrink: 0, background: colors.bg, color: colors.text }}>
+                      {client?.prenom?.[0]}{client?.nom?.[0]}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ fontSize: 12, color: '#F7F4EE', fontWeight: 500, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {client?.prenom} {client?.nom}
+                      </p>
+                      <p style={{ fontSize: 9, color: 'rgba(247,244,238,0.35)', margin: '2px 0 0', letterSpacing: '0.05em' }}>
+                        {new Date(t.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })} · {niv}
+                      </p>
+                    </div>
+                    <p style={{ fontSize: 14, fontWeight: 500, color: '#BA7517', margin: 0, flexShrink: 0 }}>
+                      −{(t.montant || 0).toLocaleString('fr-FR')} DA
+                    </p>
+                  </div>
+                )
+              })}
             </div>
           </div>
         )}

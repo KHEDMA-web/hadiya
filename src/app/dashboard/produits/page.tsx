@@ -92,6 +92,43 @@ export default function Produits() {
   const [erreur, setErreur] = useState('')
   const [stockAdjust, setStockAdjust] = useState<string | null>(null)
   const [adjustVal, setAdjustVal] = useState('')
+  const [showImport, setShowImport] = useState(false)
+  const [importText, setImportText] = useState('')
+  const [importPreview, setImportPreview] = useState<{
+    nom: string; prix: number; emoji: string; categorie: Section
+    actif: boolean; stock_actuel: number; stock_minimum: number; stock_unite: string
+  }[]>([])
+  const [importing, setImporting] = useState(false)
+
+  const parseImport = () => {
+    const lines = importText.split('\n').filter(l => l.trim())
+    const parsed = lines.map(line => {
+      const parts = line.split(',').map(p => p.trim())
+      const cat: Section = parts[3]?.toLowerCase().startsWith('conso') ? 'consommable' : section
+      return {
+        nom:           parts[0] || '',
+        prix:          parseFloat(parts[1]) || 0,
+        emoji:         parts[2] || (cat === 'soin' ? '✨' : '📦'),
+        categorie:     cat,
+        actif:         true,
+        stock_actuel:  0,
+        stock_minimum: 5,
+        stock_unite:   'unité',
+      }
+    }).filter(p => p.nom && p.prix > 0)
+    setImportPreview(parsed)
+  }
+
+  const handleImport = async () => {
+    if (importPreview.length === 0) return
+    setImporting(true)
+    await supabase.from('menu_items').insert(importPreview)
+    await fetchProduits()
+    setShowImport(false)
+    setImportText('')
+    setImportPreview([])
+    setImporting(false)
+  }
 
   useEffect(() => { fetchProduits() }, [])
 
@@ -184,10 +221,16 @@ export default function Produits() {
           <h1 className="text-base font-medium text-[#F7F4EE]">Produits & Soins</h1>
           <p className="text-xs text-[#BA7517]">Catalogue, tarifs & stock</p>
         </div>
-        <button onClick={openAdd}
-          className="ml-auto flex items-center gap-2 bg-[#BA7517] text-white rounded-xl px-4 py-2 text-xs font-medium hover:bg-[#A36714] transition-colors shadow-[0_2px_8px_rgba(186,117,23,0.3)]">
-          <span className="text-base leading-none">+</span>Ajouter
-        </button>
+        <div className="ml-auto flex items-center gap-2">
+          <button onClick={() => setShowImport(true)}
+            className="flex items-center gap-1.5 bg-[#3A3830] text-[#8A8275] rounded-xl px-3 py-2 text-xs font-medium hover:text-[#F7F4EE] transition-colors border border-[#4A4840]">
+            ↑ Import
+          </button>
+          <button onClick={openAdd}
+            className="flex items-center gap-2 bg-[#BA7517] text-white rounded-xl px-4 py-2 text-xs font-medium hover:bg-[#A36714] transition-colors shadow-[0_2px_8px_rgba(186,117,23,0.3)]">
+            <span className="text-base leading-none">+</span>Ajouter
+          </button>
+        </div>
       </div>
 
       {/* Tabs */}
@@ -331,6 +374,63 @@ export default function Produits() {
           })
         )}
       </div>
+
+      {/* Modal import en masse */}
+      {showImport && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-4">
+          <div className="bg-[#2C2A25] border border-[#4A4840] rounded-2xl p-6 w-full max-w-sm shadow-2xl flex flex-col gap-4 max-h-[85vh] overflow-y-auto">
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-medium text-[#F7F4EE]">Import en masse</p>
+              <button onClick={() => { setShowImport(false); setImportText(''); setImportPreview([]) }}
+                className="text-[#8A8275] hover:text-[#F7F4EE] text-xl leading-none">×</button>
+            </div>
+
+            <div className="bg-[#1E1C18] rounded-xl px-4 py-3 flex flex-col gap-0.5">
+              <p className="text-[9px] tracking-[0.15em] uppercase text-[#5A5850] mb-1">Format (une ligne par produit)</p>
+              <p className="text-[11px] text-[#6A6860] font-mono">Massage relaxant, 3500, 💆</p>
+              <p className="text-[11px] text-[#6A6860] font-mono">Soin du visage, 4500</p>
+              <p className="text-[11px] text-[#6A6860] font-mono">Huile essentielle, 1200, 🌿, consommable</p>
+            </div>
+
+            <textarea
+              value={importText}
+              onChange={e => { setImportText(e.target.value); setImportPreview([]) }}
+              placeholder="Coller votre liste ici..."
+              rows={6}
+              className="w-full border border-[#4A4840] rounded-xl px-4 py-3 text-sm bg-[#3A3830] text-[#F7F4EE] outline-none focus:border-[#BA7517] placeholder:text-[#5A5850] resize-none font-mono"
+            />
+
+            <button type="button" onClick={parseImport} disabled={!importText.trim()}
+              className="w-full py-2.5 rounded-xl text-[10px] tracking-[0.12em] uppercase font-medium bg-[#3A3830] text-[#8A8275] hover:text-[#F7F4EE] transition-colors disabled:opacity-40 border border-[#4A4840]">
+              Analyser ({importText.split('\n').filter(l => l.trim()).length} lignes)
+            </button>
+
+            {importPreview.length > 0 && (
+              <>
+                <div className="flex flex-col gap-2 max-h-48 overflow-y-auto">
+                  <p className="text-[9px] tracking-[0.2em] uppercase text-[#5A5850]">
+                    {importPreview.length} produit{importPreview.length > 1 ? 's' : ''} détecté{importPreview.length > 1 ? 's' : ''}
+                  </p>
+                  {importPreview.map((p, i) => (
+                    <div key={i} className="flex items-center gap-3 bg-[#3A3830] rounded-xl px-3 py-2">
+                      <span className="text-lg flex-shrink-0">{p.emoji}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium text-[#F7F4EE] truncate">{p.nom}</p>
+                        <p className="text-[9px] text-[#5A5850] capitalize">{p.categorie}</p>
+                      </div>
+                      <p className="text-xs font-semibold text-[#BA7517] flex-shrink-0">{p.prix.toLocaleString('fr-FR')} DA</p>
+                    </div>
+                  ))}
+                </div>
+                <button onClick={handleImport} disabled={importing}
+                  className="w-full bg-[#BA7517] text-white rounded-xl py-3 text-[10px] tracking-[0.15em] uppercase font-medium hover:bg-[#A36714] transition-colors disabled:opacity-40 shadow-[0_4px_12px_rgba(186,117,23,0.3)]">
+                  {importing ? 'Import en cours...' : `Importer ${importPreview.length} produit${importPreview.length > 1 ? 's' : ''}`}
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Modal ajout / édition */}
       {showForm && (
