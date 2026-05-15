@@ -39,8 +39,9 @@ src/
 │   ├── login/page.tsx
 │   ├── register/page.tsx
 │   ├── scan/page.tsx
-│   ├── carte/page.tsx + carte/[uid]/page.tsx   ← publique, PWA
+│   ├── carte/page.tsx + carte/[uid]/page.tsx        ← publique, PWA
 │   ├── gift-card/page.tsx + success/ + echec/
+│   ├── gift-card/[slug]/page.tsx                    ← page paiement par salon (branded)
 │   ├── dashboard/
 │   │   ├── page.tsx                            ← RFID realtime + stats
 │   │   ├── _components/BackButton.tsx
@@ -83,6 +84,9 @@ Colonnes clés :
 
 ## Intégrations
 - **Chargily** : POST `/api/checkout` → redirect → webhook `/api/webhook/chargily` → créer client+carte+transaction+notification → déclencher n8n
+  - Webhook sécurisé : vérification signature HMAC sha256 (header `signature`) via `timingSafeEqual`
+  - Mode TEST actuellement — URL `pay.chargily.net/test/api/v2/` → changer en prod
+- **Page paiement par salon** : `/gift-card/[slug]` — chaque salon a son URL unique configurée dans Paramètres → Salon
 - **NFC** : `NDEFReader` API (Chrome Android 89+) dans `/dashboard/caisse` — fallback manuel toujours présent
 - **PWA** : manifest `/public/manifest.json` (scope `/carte`) + SW `/public/sw.js` (network-first)
 - **n8n** : déclenché si `process.env.N8N_WEBHOOK_URL` défini — non bloquant (`.catch(() => {})`)
@@ -98,8 +102,8 @@ N8N_WEBHOOK_URL                 # optionnel
 ```
 
 ## Points d'attention / Bugs connus
-- Webhook Chargily : PAS de vérification signature HMAC (à faire)
-- Chargily en mode TEST — URL `pay.chargily.net/test/api/v2/` à changer en prod
+- ~~Webhook Chargily : PAS de vérification signature HMAC~~ → ✅ corrigé
+- Chargily en mode TEST — URL `pay.chargily.net/test/api/v2/` à changer en prod quand clés reçues
 - Middleware passif : délègue la redirection au client si pas de token
 - Pas de bouton logout dans le dashboard
 - `commandes` et `commande_items` référencées dans le schéma mais pages non créées

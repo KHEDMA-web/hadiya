@@ -1,5 +1,5 @@
 # HADIYA — STATUS COMPLET DU PROJET
-> Dernière mise à jour : 2026-05-15
+> Dernière mise à jour : 2026-05-15 — v2 (slug par salon + sécurité webhook)
 
 ---
 
@@ -52,6 +52,7 @@ hadiya/
 │   │   │
 │   │   ├── gift-card/
 │   │   │   ├── page.tsx                      ← Tunnel achat carte cadeau (4 étapes)
+│   │   │   ├── [slug]/page.tsx               ← Page paiement branded par salon ✅ NOUVEAU
 │   │   │   ├── success/page.tsx              ← Confirmation paiement réussi
 │   │   │   └── echec/page.tsx                ← Page échec paiement
 │   │   │
@@ -126,6 +127,8 @@ hadiya/
 - [x] Tunnel d'achat 4 étapes : bénéficiaire → message → montant → paiement
 - [x] Intégration Chargily Pay (redirection checkout)
 - [x] Webhook de confirmation paiement → création automatique carte + client
+- [x] **Page paiement unique par salon** `/gift-card/[slug]` — nom du salon affiché, `salon_id` attaché
+- [x] **Sécurité webhook HMAC sha256** — signature Chargily vérifiée, requêtes forgées rejetées (401)
 - [x] Page succès / page échec
 - [x] Notification realtime dashboard à chaque nouvelle carte vendue
 
@@ -234,20 +237,28 @@ hadiya/
 
 ### Chargily Pay
 
-**Mode :** Test (`pay.chargily.net/test/api/v2/`)
+**Mode :** Test (`pay.chargily.net/test/api/v2/`) — en attente des clés production
 **Flux :**
 ```
-/gift-card → POST /api/checkout → Chargily (DZD) → redirect
-     ↓ (paiement confirmé)
-Chargily → POST /api/webhook/chargily → Supabase (client + carte + transaction + notification) → n8n
+/gift-card/[slug] → POST /api/checkout → Chargily (DZD) → redirect
+                         ↓ (paiement confirmé)
+Chargily → POST /api/webhook/chargily → vérif HMAC ✅ → Supabase (client + carte + transaction + notification) → n8n
 ```
 
 **Metadata transmise dans le checkout :**
+- `salonId` — UUID du salon pour isolation multi-tenant
 - `beneficiaryFirstName`, `beneficiaryLastName`
 - `beneficiaryPhone`, `beneficiaryEmail`, `beneficiaryBirthDate`
 - `offeredBy`, `message`
 
-**Webhook :** Déclenché sur `body.type === 'checkout.paid'` uniquement.
+**Sécurité webhook :**
+- Header `signature` vérifié via HMAC sha256 avec `CHARGILY_SECRET_KEY`
+- Comparaison `timingSafeEqual` — résistant aux timing attacks
+- Requête sans signature ou signature invalide → 401 immédiat
+
+**Passer en production :**
+1. Remplacer `CHARGILY_SECRET_KEY` dans Vercel par la clé prod
+2. Changer l'URL dans `/api/checkout/route.ts` : `pay.chargily.net/test/` → `pay.chargily.net/`
 
 ---
 
@@ -338,6 +349,7 @@ N8N_WEBHOOK_URL=https://n8n.domain.com/webhook/xxx   # optionnel
 | `telephone` | text | |
 | `wilaya` | text | Wilaya algérienne |
 | `owner_id` | uuid | FK → auth.users |
+| `slug` | text | Unique — URL de paiement `/gift-card/[slug]` ⚠️ à ajouter |
 | `fidelite_actif` | boolean | Défaut: true |
 | `points_par_100da` | integer | Défaut: 2 |
 | `seuil_argent` | integer | Défaut: 500 pts |
@@ -439,25 +451,27 @@ N8N_WEBHOOK_URL=https://n8n.domain.com/webhook/xxx   # optionnel
 - [ ] **Turbopack désactivé** : `npm run dev --webpack` — cause à identifier (conflit possible avec Tailwind 4 ou CSS modules).
 
 ### Fonctionnalités manquantes
-- [ ] **Passage en production Chargily** : URL hardcodée `pay.chargily.net/test/...` → à passer en prod (`pay.chargily.net/api/v2/`)
-- [ ] **Vérification signature webhook Chargily** : Pas de validation de la signature HMAC dans le webhook → vulnérabilité sécurité.
+- [ ] **Passage en production Chargily** : Changer `CHARGILY_SECRET_KEY` dans Vercel + URL `pay.chargily.net/test/api/v2/` → `pay.chargily.net/api/v2/` dans `/api/checkout/route.ts` — en attente des vraies clés
 - [ ] **Envoi WhatsApp / Email** : Dépend de n8n (`N8N_WEBHOOK_URL`) — non configuré par défaut, livraison silencieuse si absent.
 - [ ] **Page `/scan`** : Existe mais n'est pas liée au dashboard.
-- [ ] **Commandes / `commande_items`** : Tables mentionnées dans CLAUDE.md mais pages non créées.
+- [ ] **Commandes / `commande_items`** : Tables mentionnées dans le schéma mais pages non créées.
 - [ ] **Impression reçu** : Pas de génération PDF / reçu thermique depuis la caisse.
-- [ ] **Filtre par salon** : Toutes les requêtes Supabase ne filtrent pas par `salon_id` explicitement — potentielle fuite de données inter-salons si RLS mal configuré.
 - [ ] **Déconnexion** : Pas de bouton logout visible dans le dashboard.
 - [ ] **Gestion expiration cartes** : Pas de tâche CRON pour désactiver les cartes expirées.
 - [ ] **Recherche transactions** : La page `/dashboard/transactions` liste tout sans filtre client.
 - [ ] **Mode offline complet** : Le SW met en cache le shell mais les données Supabase ne sont pas cachées offline.
 
+### ✅ Résolu récemment
+- [x] **Vérification signature webhook Chargily** : HMAC sha256 via `timingSafeEqual` — requêtes forgées rejetées (401)
+- [x] **Page paiement par salon** : `/gift-card/[slug]` — chaque salon a son URL unique, `salon_id` attaché à la carte/client
+
 ### Colonnes Supabase à vérifier / ajouter
-- [ ] `cartes.salon_id` → relier chaque carte à un salon (multi-tenant)
-- [ ] `clients.salon_id` → même chose pour les clients
+- [x] `cartes.salon_id` → déjà présente
+- [ ] `clients.salon_id` → à ajouter : `ALTER TABLE clients ADD COLUMN IF NOT EXISTS salon_id uuid REFERENCES salons(id);`
+- [ ] `salons.slug` → à ajouter : `ALTER TABLE salons ADD COLUMN IF NOT EXISTS slug text UNIQUE;`
 - [ ] `transactions.salon_id` → filtrage par salon
 - [ ] `notifications.salon_id` → isoler les notifications par salon
 - [ ] `salons.logo_url` → pour personnalisation carte client
-- [ ] `salons.adresse` → pour la fiche salon
 - [ ] `employes.salon_id` → relier l'employé à son salon explicitement
 
 ---
