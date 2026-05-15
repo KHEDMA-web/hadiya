@@ -1,13 +1,34 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { createHmac, timingSafeEqual } from 'crypto'
+
+async function verifyChargilySignature(req: NextRequest, rawBody: string): Promise<boolean> {
+  const secret = process.env.CHARGILY_SECRET_KEY
+  if (!secret) return false
+  const signature = req.headers.get('signature')
+  if (!signature) return false
+  const expected = createHmac('sha256', secret).update(rawBody).digest('hex')
+  try {
+    return timingSafeEqual(Buffer.from(signature), Buffer.from(expected))
+  } catch {
+    return false
+  }
+}
 
 export async function POST(req: NextRequest) {
+  const rawBody = await req.text()
+
+  const valid = await verifyChargilySignature(req, rawBody)
+  if (!valid) {
+    return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
+  }
+
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   )
   const { randomUUID } = await import('crypto')
-  const body = await req.json()
+  const body = JSON.parse(rawBody)
 
   // Ignorer tout ce qui n'est pas un paiement confirmé
   if (body.type !== 'checkout.paid') {
