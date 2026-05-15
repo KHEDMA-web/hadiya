@@ -4,6 +4,13 @@ import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import BackButton from '../../_components/BackButton'
 
+function toSlug(nom: string) {
+  return nom.toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+}
+
 type Salon = {
   id: string
   nom: string
@@ -14,6 +21,7 @@ type Salon = {
   whatsapp: string | null
   abonnement: string | null
   logo_url: string | null
+  slug: string | null
   fidelite_actif: boolean
   points_par_100da: number
   seuil_argent: number
@@ -49,6 +57,7 @@ export default function Parametres() {
   const [saveError, setSaveError] = useState<string | null>(null)
   const [userEmail, setUserEmail] = useState('')
   const [activeSection, setActiveSection] = useState<'salon' | 'fidelite' | 'abonnement' | 'notifications' | 'securite'>('salon')
+  const [copied, setCopied] = useState(false)
 
   useEffect(() => {
     const init = async () => {
@@ -84,6 +93,7 @@ export default function Parametres() {
         adresse:   salon.adresse   || null,
         wilaya:    salon.wilaya    || null,
         whatsapp:  salon.whatsapp  || null,
+        slug:      salon.slug      || null,
       }
     } else if (activeSection === 'fidelite') {
       payload = {
@@ -202,6 +212,58 @@ export default function Parametres() {
                   <Field label="Téléphone" value={salon.telephone || ''} onChange={v => setSalon(s => ({ ...s, telephone: v }))} placeholder="Ex : 0555 123 456" type="tel" />
                   <Field label="WhatsApp" value={salon.whatsapp || ''} onChange={v => setSalon(s => ({ ...s, whatsapp: v }))} placeholder="Ex : +213 555 123 456" type="tel" />
                 </div>
+                {/* LIEN DE PAIEMENT */}
+                <div className="bg-[#2C2A25] border border-[#BA7517]/30 rounded-2xl p-6 shadow-md flex flex-col gap-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="w-1 h-5 bg-[#BA7517] rounded-full" />
+                    <p className="text-xs font-semibold text-[#F7F4EE] uppercase tracking-wider">Lien de paiement carte cadeau</p>
+                  </div>
+                  <p className="text-[11px] text-[#8A8275]">Partagez ce lien sur Instagram, WhatsApp ou votre site. Chaque salon a son lien unique.</p>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs text-[#8A8275] font-medium">Identifiant unique du salon</label>
+                    <div className="flex gap-2">
+                      <input
+                        value={salon.slug || ''}
+                        onChange={e => setSalon(s => ({ ...s, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-') }))}
+                        placeholder={salon.nom ? toSlug(salon.nom) : 'mon-spa-alger'}
+                        className="flex-1 border border-[#3A3830] rounded-xl px-4 py-3 text-sm text-[#F7F4EE] outline-none focus:border-[#BA7517] bg-[#1E1C18] placeholder:text-[#4A4840]"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!salon.slug && salon.nom) setSalon(s => ({ ...s, slug: toSlug(salon.nom!) }))
+                        }}
+                        className="px-3 py-2 rounded-xl text-xs bg-[#3A3830] text-[#8A8275] hover:text-[#F7F4EE] transition-colors whitespace-nowrap"
+                      >
+                        Auto
+                      </button>
+                    </div>
+                  </div>
+                  {salon.slug && (
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center gap-2 bg-[#1E1C18] rounded-xl px-4 py-3 border border-[#3A3830]">
+                        <p className="flex-1 text-xs text-[#BA7517] truncate font-mono">
+                          {process.env.NEXT_PUBLIC_URL || 'https://hadiya.app'}/gift-card/{salon.slug}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(`${process.env.NEXT_PUBLIC_URL || 'https://hadiya.app'}/gift-card/${salon.slug}`)
+                          setCopied(true)
+                          setTimeout(() => setCopied(false), 2000)
+                        }}
+                        className="w-full py-2.5 rounded-xl text-xs font-medium bg-[#BA7517] text-white hover:bg-[#A36714] transition-colors"
+                      >
+                        {copied ? '✓ Lien copié !' : 'Copier le lien'}
+                      </button>
+                    </div>
+                  )}
+                  {!salon.slug && (
+                    <p className="text-[10px] text-[#8A8275]">Saisissez un identifiant puis sauvegardez pour activer votre lien.</p>
+                  )}
+                </div>
+
                 <div className="bg-white border border-[#C4B89E] rounded-2xl p-6 shadow-md flex flex-col gap-4">
                   <div className="flex items-center gap-2 mb-1">
                     <div className="w-1 h-5 bg-[#BA7517] rounded-full" />

@@ -20,6 +20,7 @@ export async function POST(req: NextRequest) {
   }
 
   const amount: number = body.data?.amount ?? 0
+  const salonId: string | null = meta.salonId || null
 
   // 1. Créer ou récupérer le client
   let clientId: string
@@ -36,13 +37,14 @@ export async function POST(req: NextRequest) {
     const { data: newClient, error: clientError } = await supabase
       .from('clients')
       .insert({
-        prenom:          meta.beneficiaryFirstName,
-        nom:             meta.beneficiaryLastName,
-        telephone:       meta.beneficiaryPhone,
-        email:           meta.beneficiaryEmail    || null,
-        date_naissance:  meta.beneficiaryBirthDate || null,
-        niveau:          'Bronze',
-        points:          0,
+        prenom:         meta.beneficiaryFirstName,
+        nom:            meta.beneficiaryLastName,
+        telephone:      meta.beneficiaryPhone,
+        email:          meta.beneficiaryEmail    || null,
+        date_naissance: meta.beneficiaryBirthDate || null,
+        niveau:         'Bronze',
+        points:         0,
+        ...(salonId ? { salon_id: salonId } : {}),
       })
       .select('id')
       .single()
@@ -69,6 +71,7 @@ export async function POST(req: NextRequest) {
       offert_par:      meta.offeredBy,
       date_expiration: expiration.toISOString(),
       source:          'online',
+      ...(salonId ? { salon_id: salonId } : {}),
     })
     .select('id')
     .single()

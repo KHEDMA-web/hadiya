@@ -6,6 +6,7 @@ export async function POST(req: NextRequest) {
   const {
     amount,
     currency,
+    salonId,
     beneficiaryFirstName,
     beneficiaryLastName,
     beneficiaryPhone,
@@ -33,6 +34,7 @@ export async function POST(req: NextRequest) {
       webhook_endpoint: `${process.env.NEXT_PUBLIC_URL}/api/webhook/chargily`,
       locale: 'ar',
       metadata: {
+        salonId:              salonId              || null,
         beneficiaryFirstName,
         beneficiaryLastName,
         beneficiaryPhone,
