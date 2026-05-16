@@ -91,39 +91,38 @@ export default function Employes() {
     setSaving(true)
     setErreur('')
 
-    // 1. Crée le compte Auth Supabase
-    const { data: authData, error: authError } = await supabase.auth.admin
-      ? { data: null, error: { message: 'Admin API not available on client' } }
-      : { data: null, error: null }
+    // Récupère le salon_id du propriétaire connecté
+    const { data: { session } } = await supabase.auth.getSession()
+    const { data: salon } = await supabase
+      .from('salons')
+      .select('id')
+      .eq('email', session?.user.email || '')
+      .single()
 
-    // Utilise signUp pour créer le compte (sans admin API)
-    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-      email: form.email,
-      password: form.password,
-    })
-
-    if (signUpError) {
-      setErreur('Erreur création compte : ' + signUpError.message)
+    if (!salon?.id) {
+      setErreur('Impossible de trouver le salon associé à votre compte')
       setSaving(false)
       return
     }
 
-    const newUserId = signUpData.user?.id
-
-    // 2. Crée l'employé en base
-    const { error: empError } = await supabase.from('employes').insert({
-      nom: form.nom,
-      prenom: form.prenom,
-      telephone: form.telephone || null,
-      email: form.email,
-      role: form.role,
-      actif: true,
-      user_id: newUserId || null,
-      permissions: form.permissions,
+    const res = await fetch('/api/employes/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: form.email,
+        password: form.password,
+        nom: form.nom,
+        prenom: form.prenom,
+        telephone: form.telephone || null,
+        role: form.role,
+        permissions: form.permissions,
+        salonId: salon.id,
+      }),
     })
 
-    if (empError) {
-      setErreur('Erreur enregistrement : ' + empError.message)
+    const result = await res.json() as { error?: string }
+    if (!res.ok) {
+      setErreur(result.error || 'Erreur lors de la création')
       setSaving(false)
       return
     }
