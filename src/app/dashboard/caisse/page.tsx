@@ -147,15 +147,39 @@ export default function Caisse() {
     setLoading(true)
     const pts = Math.round(total / 100 * 1.5)
     setPtsGagnes(pts)
+
     await supabase.from('cartes').update({
       solde: carte.solde - total,
       points: carte.points + pts,
     }).eq('id', carte.id)
+
     await supabase.from('transactions').insert({
       carte_id: carte.id, type: 'debit',
       montant: total, points_gagnes: pts, description: 'Caisse POS',
       ...(salonId ? { salon_id: salonId } : {}),
     })
+
+    const { data: commande } = await supabase.from('commandes').insert({
+      client_id: carte.client_id,
+      carte_id: carte.id,
+      salon_id: salonId,
+      total,
+      statut: 'payee',
+    }).select('id').single()
+
+    if (commande?.id) {
+      await supabase.from('commande_items').insert(
+        Object.values(order).map(item => ({
+          commande_id: commande.id,
+          menu_item_id: item.id,
+          nom: item.nom,
+          prix: item.prix,
+          quantite: item.qty,
+          emoji: item.emoji,
+        }))
+      )
+    }
+
     setStep('done')
     setLoading(false)
   }

@@ -134,10 +134,43 @@ export default function Scanner() {
 
   const [nfcSupported, setNfcSupported] = useState(false)
   const [nfcReading, setNfcReading] = useState(false)
+  const [qrScanning, setQrScanning] = useState(false)
+  const qrScannerRef = useRef<any>(null)
 
   useEffect(() => {
     if ('NDEFReader' in window) setNfcSupported(true)
+    return () => { qrScannerRef.current?.stop().catch(() => {}) }
   }, [])
+
+  const startQrScan = async () => {
+    setQrScanning(true)
+    setTimeout(async () => {
+      try {
+        const { Html5Qrcode } = await import('html5-qrcode')
+        const scanner = new Html5Qrcode('qr-scanner-dash')
+        qrScannerRef.current = scanner
+        await scanner.start(
+          { facingMode: 'environment' },
+          { fps: 10, qrbox: { width: 220, height: 220 } },
+          async (decodedText: string) => {
+            await scanner.stop()
+            qrScannerRef.current = null
+            setQrScanning(false)
+            const scannedUid = decodedText.split('/').pop() || decodedText
+            setUid(scannedUid)
+            handleSearch(scannedUid)
+          },
+          () => {}
+        )
+      } catch { setQrScanning(false) }
+    }, 300)
+  }
+
+  const stopQrScan = async () => {
+    await qrScannerRef.current?.stop().catch(() => {})
+    qrScannerRef.current = null
+    setQrScanning(false)
+  }
 
   const startNFC = async () => {
     if (!('NDEFReader' in window)) return
@@ -262,30 +295,56 @@ export default function Scanner() {
           }}>
             Numéro de carte
           </p>
-          {nfcSupported && (
+          <div style={{ display: 'flex', gap: 10, marginBottom: 12 }}>
+            {nfcSupported && (
+              <button
+                onClick={startNFC}
+                disabled={nfcReading}
+                style={{
+                  flex: 1,
+                  background: nfcReading ? 'rgba(186,117,23,0.2)' : '#2C2A25',
+                  color: nfcReading ? '#BA7517' : '#F7F4EE',
+                  border: '1px solid rgba(186,117,23,0.3)',
+                  borderRadius: 16, padding: '14px 16px',
+                  fontSize: 13, fontWeight: 500,
+                  cursor: nfcReading ? 'default' : 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                  minHeight: 52,
+                }}
+              >
+                {nfcReading ? '📡 Approcher...' : '📡 NFC'}
+              </button>
+            )}
             <button
-              onClick={startNFC}
-              disabled={nfcReading}
+              onClick={qrScanning ? stopQrScan : startQrScan}
               style={{
-                width: '100%',
-                background: nfcReading ? 'rgba(186,117,23,0.2)' : '#2C2A25',
-                color: nfcReading ? '#BA7517' : '#F7F4EE',
-                border: '1px solid rgba(186,117,23,0.3)',
-                borderRadius: 16,
-                padding: '14px 16px',
-                fontSize: 13,
-                fontWeight: 500,
-                cursor: nfcReading ? 'default' : 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 8,
+                flex: 1,
+                background: qrScanning ? 'rgba(186,117,23,0.15)' : '#2C2A25',
+                color: qrScanning ? '#BA7517' : '#F7F4EE',
+                border: qrScanning ? '1px solid rgba(186,117,23,0.5)' : '1px solid rgba(186,117,23,0.3)',
+                borderRadius: 16, padding: '14px 16px',
+                fontSize: 13, fontWeight: 500, cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                 minHeight: 52,
-                marginBottom: 12,
               }}
             >
-              {nfcReading ? '📡 Approcher la carte...' : '📡 Scanner par NFC'}
+              {qrScanning ? '✕ Annuler' : '📷 QR Code'}
             </button>
+          </div>
+
+          {qrScanning && (
+            <div style={{ marginBottom: 12 }}>
+              <div
+                id="qr-scanner-dash"
+                style={{
+                  width: '100%', minHeight: 260, borderRadius: 16,
+                  overflow: 'hidden', background: '#111',
+                }}
+              />
+              <p style={{ textAlign: 'center', fontSize: 11, color: '#BA7517', marginTop: 8, letterSpacing: '0.1em' }}>
+                Pointez vers le QR code du client...
+              </p>
+            </div>
           )}
 
           <div style={{ display: 'flex', gap: '10px' }}>

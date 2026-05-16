@@ -192,6 +192,7 @@ export default function Dashboard() {
     { label: 'Recharge',     sub: 'Ajouter du solde',            href: '/dashboard/recharge',     icon: '◎', perm: 'recharge'     },
     { label: 'Produits',     sub: 'Soins, tarifs & catalogue',   href: '/dashboard/produits',     icon: '✦', perm: 'produits'     },
     { label: 'Statistiques', sub: "Chiffre d'affaires & KPIs",   href: '/dashboard/statistiques', icon: '≋', perm: 'statistiques' },
+    { label: 'Commandes',     sub: 'Historique des commandes',    href: '/dashboard/commandes',    icon: '⊟', perm: 'caisse'       },
     { label: 'Historique',   sub: 'Toutes les transactions',     href: '/dashboard/transactions', icon: '≡', perm: 'transactions' },
     { label: 'Admin',        sub: 'Employés & paramètres',       href: '/dashboard/admin',        icon: '◬', perm: 'admin'        },
   ]

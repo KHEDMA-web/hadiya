@@ -1,5 +1,5 @@
 # HADIYA — STATUS COMPLET DU PROJET
-> Dernière mise à jour : 2026-05-15 — v2 (slug par salon + sécurité webhook)
+> Dernière mise à jour : 2026-05-16 — v3 (middleware SSR + reçu caisse + SQL complet)
 
 ---
 
@@ -474,7 +474,7 @@ N8N_WEBHOOK_URL=https://n8n.domain.com/webhook/xxx   # optionnel
 ## 8. CE QUI RESTE À FAIRE (backlog) ⏳
 
 ### Bugs connus
-- [ ] **Auth middleware passif** : Le middleware laisse passer les routes `/dashboard/*` sans token (`NextResponse.next()`) et délègue la vérification au client. Un utilisateur non connecté voit un flash avant la redirection.
+- [x] **Auth middleware passif** : ✅ Corrigé — middleware utilise `createServerClient` de `@supabase/ssr`, redirige vers `/login` server-side, plus de flash blanc.
 - [ ] **Lookup employé via email** : La fonction `getUserProfile()` cherche le salon par `email` de l'employé (ligne 91 `auth.ts`) avec un split peu robuste — peut échouer pour des emails complexes.
 - [ ] **`SUPABASE_SERVICE_ROLE_KEY` absent du `.env.local`** : Le webhook Chargily crashe en local si cette variable n'est pas définie.
 - [ ] **Turbopack désactivé** : `npm run dev --webpack` — cause à identifier (conflit possible avec Tailwind 4 ou CSS modules).
@@ -484,29 +484,26 @@ N8N_WEBHOOK_URL=https://n8n.domain.com/webhook/xxx   # optionnel
 - [ ] **Envoi WhatsApp / Email** : Dépend de n8n (`N8N_WEBHOOK_URL`) — non configuré par défaut, livraison silencieuse si absent.
 - [ ] **Page `/scan`** : Existe mais n'est pas liée au dashboard.
 - [ ] **Commandes / `commande_items`** : Tables mentionnées dans le schéma mais pages non créées.
-- [ ] **Impression reçu** : Pas de génération PDF / reçu thermique depuis la caisse.
-- [ ] **Déconnexion** : Pas de bouton logout visible dans le dashboard.
 - [ ] **Gestion expiration cartes** : Pas de tâche CRON pour désactiver les cartes expirées.
-- [ ] **Recherche transactions** : La page `/dashboard/transactions` liste tout sans filtre client.
 - [ ] **Mode offline complet** : Le SW met en cache le shell mais les données Supabase ne sont pas cachées offline.
 
 ### ✅ Résolu récemment
+- [x] **Auth middleware passif** : Middleware SSR avec `createServerClient` — redirect server-side, 0 flash blanc
+- [x] **Impression reçu caisse** : Ticket `@media print` + `window.print()` — bouton 🖨 sur écran de confirmation
+- [x] **Déconnexion** : Bouton logout dans le header du dashboard (`handleLogout` → `supabase.auth.signOut()`)
+- [x] **Recherche transactions** : Filtres par type (débit/recharge/cadeau) + recherche par client/description
 - [x] **Vérification signature webhook Chargily** : HMAC sha256 via `timingSafeEqual` — requêtes forgées rejetées (401)
 - [x] **Page paiement par salon** : `/gift-card/[slug]` — chaque salon a son URL unique, `salon_id` attaché à la carte/client
 
-### Colonnes Supabase à vérifier / ajouter
-- [x] `cartes.salon_id` → présente
-- [x] `clients.salon_id` → ajoutée ✅
-- [x] `salons.slug` → ajoutée ✅
-- [x] `salons.avantages_fidelite` → ajoutée ✅
-- [x] `transactions.salon_id` → ajoutée ✅ + index
-- [x] `notifications.salon_id` → ajoutée ✅ + index
-- [x] `employes.salon_id` → ajoutée ✅
-- [x] `salons.logo_url` → ajoutée ✅
-- [ ] `transactions.salon_id` → filtrage par salon
-- [ ] `notifications.salon_id` → isoler les notifications par salon
-- [ ] `salons.logo_url` → pour personnalisation carte client
-- [ ] `employes.salon_id` → relier l'employé à son salon explicitement
+### Colonnes Supabase — toutes ajoutées ✅
+- [x] `cartes.salon_id`
+- [x] `clients.salon_id`
+- [x] `salons.slug` (unique)
+- [x] `salons.avantages_fidelite` (jsonb)
+- [x] `salons.logo_url`
+- [x] `transactions.salon_id` + index
+- [x] `notifications.salon_id` + index
+- [x] `employes.salon_id`
 
 ---
 
