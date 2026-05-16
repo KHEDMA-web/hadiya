@@ -1,5 +1,5 @@
 # HADIYA — STATUS COMPLET DU PROJET
-> Dernière mise à jour : 2026-05-16 — v6 (réservations + produits refonte + schéma vérifié)
+> Dernière mise à jour : 2026-05-16 — v7 (réservations redesign + praticiens + carte auto)
 
 ---
 
@@ -164,15 +164,20 @@ hadiya/
 - [x] Historique transactions par client
 - [x] ClientModal 4 onglets : vente / recharge / historique / infos
 
-### Réservations ✅ nouveau
-- [x] Vue Jour — mini calendrier semaine + liste du jour
-- [x] Vue Semaine — 7 jours groupés avec compteurs
+### Réservations ✅ redesign v2
+- [x] Vue Jour — mini calendrier semaine + stats (total/confirmés/en attente) + liste
+- [x] Vue Semaine — 7 jours groupés avec compteurs + empty state dashed
 - [x] Vue Mois — grille calendrier avec dots + liste jour sélectionné
-- [x] Créer réservation : client existant (recherche) ou nouveau client (→ créé en DB)
-- [x] Sélection service (soins uniquement, consommables exclus)
-- [x] Sélection employé, date, heure, notes
-- [x] Actions : Confirmer / Terminé / Annuler / Supprimer / WhatsApp
-- [x] Modal centré sur PC, bottom sheet sur mobile
+- [x] Créer réservation : client existant (avatar initiales + "Changer") ou nouveau client
+- [x] Nouveau client : prénom + nom séparés + téléphone + date de naissance
+- [x] Création automatique carte fidélité (type:fidelite, source:comptoir) + bannière succès QR
+- [x] Sélection service : liste radio avec checkmark doré + prix + durée
+- [x] Chips heures suggérées + calcul "Fin estimée à HH:MM"
+- [x] Praticien en chips (uniquement role=praticien) — caissiers/staff exclus
+- [x] Footer sticky modal : prix service + bouton fléché
+- [x] Actions cards : Confirmer / Terminé / Annuler / Supprimer / WhatsApp
+- [x] RLS policies sur table reservations (owner + employé)
+- [x] Modal bottom sheet mobile, centré desktop
 
 ### Fidélité
 - [x] Calcul points (configurable : X pts par 100 DA)
@@ -202,6 +207,8 @@ hadiya/
 - [x] Paramètres salon (nom, téléphone, wilaya, logo)
 - [x] Configuration programme fidélité (seuils, taux de points)
 - [x] Changement mot de passe + sessions actives + déconnexion globale
+- [x] Séparation Praticiens / Staff — praticiens sans compte app (nom, prénom, contact)
+- [x] Bannière alerte soins legacy (categorie=soin) dans Catalogue → Soins
 
 ---
 
@@ -290,7 +297,7 @@ Chargily → POST /api/webhook/chargily → vérif HMAC ✅ → Supabase → n8n
 |---|---|
 | `salons` | id, owner_id, nom, slug, logo_url, fidelite_actif, points_par_100da, seuils, avantages_fidelite |
 | `employes` | id, salon_id, user_id, prenom, nom, role, permissions(jsonb), actif |
-| `clients` | id, salon_id, prenom, nom, telephone, points, niveau, allergies, preferences_massage, notes_praticien |
+| `clients` | id, salon_id, prenom, nom, telephone, date_naissance, points, niveau, allergies, preferences_massage, notes_praticien |
 | `cartes` | id, salon_id, client_id, uid_rfid, type, solde, points, niveau, statut, source, date_expiration |
 | `transactions` | id, salon_id, carte_id, type, montant, points_gagnes, description |
 | `menu_items` | id, salon_id, nom, emoji, prix, categorie, actif, duree_minutes, stock_actuel, stock_minimum, stock_unite |
@@ -309,9 +316,18 @@ Chargily → POST /api/webhook/chargily → vérif HMAC ✅ → Supabase → n8n
 ### En attente
 - [ ] **Passer Chargily en production** — `CHARGILY_SECRET_KEY` Vercel + URL `/api/checkout/route.ts` (en attente des clés)
 - [ ] **n8n WhatsApp** — `N8N_WEBHOOK_URL` dans Vercel + workflow n8n
-- [x] **Sous-catégories soins** — bannière alerte dans Produits > Soins pour identifier et reclassifier les soins legacy
 
-### ✅ Fait session 2026-05-16
+### ✅ Fait session 2026-05-16 (v7)
+- [x] Réservations redesign — fusion Claude Design (modal + cards + vues)
+- [x] Modal : avatar initiales, chips heures, fin estimée, praticien chips, footer sticky prix
+- [x] Nouveau client : prénom/nom séparés + date naissance + carte fidélité auto + bannière QR
+- [x] Praticiens séparés du Staff dans Admin → Équipe (role=praticien, sans compte app)
+- [x] RLS policies reservations (owner + employé)
+- [x] Bannière alerte soins legacy dans Catalogue → Soins
+- [x] Colonnes clients : date_naissance(date) · points DEFAULT 0 · niveau DEFAULT bronze
+- [x] SUPABASE.md mis à jour
+
+### ✅ Fait session 2026-05-16 (v6)
 - [x] Isolation multi-salon complète — toutes les pages filtrent par `salon_id`
 - [x] SQL backfills — transactions(33), scans(12), menu_items, clients, employes, cartes
 - [x] Logo salon — upload Storage bucket `logos`, affiché gift-card/[slug] + dashboard + carte/[uid]

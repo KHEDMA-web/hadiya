@@ -1,10 +1,11 @@
-# Supabase — Hadiya (vérifié 2026-05-16)
+# Supabase — Hadiya (vérifié 2026-05-16 v7)
 
 ## Tables & colonnes
 
 **salons** — id · owner_id · nom · slug(unique) · logo_url · fidelite_actif(bool) · points_par_100da(int) · seuil_argent/or/platine(int) · avantages_fidelite(jsonb)
 
-**employes** — id · salon_id · prenom · nom · email · role(caissier/receptionniste/manager) · permissions(jsonb) · actif(bool)
+**employes** — id · salon_id · prenom · nom · email · telephone · role(caissier/receptionniste/manager/praticien) · permissions(jsonb) · actif(bool)
+- `praticien` : masseuses/masseurs — pas de compte app, pas d'email, contact téléphone uniquement
 
 **clients** — id · salon_id · prenom · nom · telephone · date_naissance(date) · points(int) · niveau · allergies · preferences_massage · notes_praticien
 
@@ -38,6 +39,9 @@
 - Owner : `salons.owner_id = auth.uid()`
 - Employé : `employes.permissions` (jsonb) — 9 permissions
 - Service Role Key : webhook Chargily uniquement (bypass RLS) · route `/api/employes/create`
+
+## RLS Policies notables
+- `reservations` : owner (via `salons.owner_id`) + employé actif du salon (`employes.salon_id + actif`)
 
 ## Règle
 **Après chaque modif Supabase (table/colonne/bucket/policy), mettre à jour ce fichier.**
