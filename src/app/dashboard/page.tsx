@@ -237,6 +237,7 @@ export default function Dashboard() {
   }
 
   const allSecondary = [
+    { label: 'Réservations',  sub: 'Agenda & rendez-vous',        href: '/dashboard/reservations', icon: '◷', perm: 'dashboard'    },
     { label: 'Scanner',      sub: 'Lire & débiter une carte',    href: '/dashboard/scanner',      icon: '◈', perm: 'scanner'      },
     { label: 'Caisse POS',   sub: 'Paiement RFID / QR code',     href: '/dashboard/caisse',       icon: '⊞', perm: 'caisse'       },
     { label: 'Clients',      sub: 'Fiches & fidélité',           href: '/dashboard/clients',      icon: '⊹', perm: 'clients'      },
