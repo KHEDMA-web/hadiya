@@ -184,8 +184,6 @@ export default function ReservationsPage() {
           nom,
           telephone: form.telClient || null,
           date_naissance: form.dateNaissance || null,
-          points: 0,
-          niveau: 'bronze',
         })
         .select('id')
         .single()
