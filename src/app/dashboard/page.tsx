@@ -30,13 +30,59 @@ export default function Dashboard() {
   const [scanSuccess, setScanSuccess] = useState('')
   const [rfidMode, setRfidMode] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
+  const [notifOpen, setNotifOpen] = useState(false)
+  const [recentNotifs, setRecentNotifs] = useState<any[]>([])
+  const [notifLoading, setNotifLoading] = useState(false)
 
   const uidRef = useRef<HTMLInputElement>(null)
   const montantRef = useRef<HTMLInputElement>(null)
+  const notifRef = useRef<HTMLDivElement>(null)
   const rfidModeRef = useRef(false)
   const carteFoundRef = useRef(false)
   const routerRef = useRef(router)
   useEffect(() => { routerRef.current = router }, [router])
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
+        setNotifOpen(false)
+      }
+    }
+    if (notifOpen) document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [notifOpen])
+
+  const openNotifs = async () => {
+    if (notifOpen) { setNotifOpen(false); return }
+    setNotifOpen(true)
+    setNotifLoading(true)
+    const { data } = await supabase
+      .from('notifications')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(5)
+    setRecentNotifs(data || [])
+    setNotifLoading(false)
+    if (data?.some((n: any) => !n.lu)) {
+      await supabase.from('notifications').update({ lu: true }).eq('lu', false)
+      setUnreadCount(0)
+    }
+  }
+
+  const formatNotifDate = (iso: string) => {
+    const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 1000)
+    if (diff < 60) return "À l'instant"
+    if (diff < 3600) return `${Math.floor(diff / 60)} min`
+    if (diff < 86400) return `${Math.floor(diff / 3600)}h`
+    return new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
+  }
+
+  const NOTIF_ICON: Record<string, string> = {
+    nouvelle_carte_cadeau: '🎁',
+    paiement: '💳',
+    recharge: '⚡',
+    default: '🔔',
+  }
 
   useEffect(() => {
     const init = async () => {
@@ -252,20 +298,75 @@ export default function Dashboard() {
                 </div>
               </div>
               <div className="flex items-center gap-1">
-                <button
-                  onClick={() => router.push('/dashboard/notifications')}
-                  className="relative flex items-center justify-center w-8 h-8 rounded-xl bg-[#F7F4EE]/[0.07] border border-[#F7F4EE]/[0.1] hover:border-[#BA7517]/50 transition-all mr-2"
-                >
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="text-[#F7F4EE]/50">
-                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-                    <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
-                  </svg>
-                  {unreadCount > 0 && (
-                    <span className="absolute -top-1 -right-1 min-w-[16px] h-4 bg-[#BA7517] rounded-full text-[8px] text-white flex items-center justify-center font-bold px-0.5 shadow-lg">
-                      {unreadCount > 9 ? '9+' : unreadCount}
-                    </span>
+                <div ref={notifRef} className="relative mr-2">
+                  <button
+                    onClick={openNotifs}
+                    className={`relative flex items-center justify-center w-8 h-8 rounded-xl border transition-all ${notifOpen ? 'bg-[#BA7517]/15 border-[#BA7517]/50' : 'bg-[#F7F4EE]/[0.07] border-[#F7F4EE]/[0.1] hover:border-[#BA7517]/50'}`}
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={notifOpen ? 'text-[#BA7517]' : 'text-[#F7F4EE]/50'}>
+                      <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                      <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                    </svg>
+                    {unreadCount > 0 && (
+                      <span className="absolute -top-1 -right-1 min-w-[16px] h-4 bg-[#BA7517] rounded-full text-[8px] text-white flex items-center justify-center font-bold px-0.5 shadow-lg">
+                        {unreadCount > 9 ? '9+' : unreadCount}
+                      </span>
+                    )}
+                  </button>
+
+                  {notifOpen && (
+                    <div className="absolute right-0 top-10 w-[320px] bg-[#1E1C18] border border-[#BA7517]/20 rounded-2xl shadow-2xl z-50 overflow-hidden">
+                      <div className="flex items-center justify-between px-4 py-3 border-b border-[#F7F4EE]/[0.06]">
+                        <p className="text-[9px] tracking-[0.25em] uppercase text-[#F7F4EE]/40 font-medium">Notifications</p>
+                        {recentNotifs.length > 0 && (
+                          <span className="text-[9px] text-[#BA7517]/60">Marquées comme lues</span>
+                        )}
+                      </div>
+
+                      {notifLoading ? (
+                        <div className="flex justify-center py-8">
+                          <div className="w-5 h-5 border-2 border-[#BA7517]/20 border-t-[#BA7517] rounded-full animate-spin" />
+                        </div>
+                      ) : recentNotifs.length === 0 ? (
+                        <div className="py-10 text-center">
+                          <p className="text-2xl mb-2">🔔</p>
+                          <p className="text-[11px] text-[#F7F4EE]/30">Aucune notification</p>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col">
+                          {recentNotifs.map((n, i) => (
+                            <div
+                              key={n.id}
+                              className={`flex items-start gap-3 px-4 py-3 hover:bg-[#F7F4EE]/[0.04] transition-colors cursor-pointer ${i < recentNotifs.length - 1 ? 'border-b border-[#F7F4EE]/[0.05]' : ''}`}
+                              onClick={() => {
+                                setNotifOpen(false)
+                                if (n.meta?.client_id) router.push(`/dashboard/clients/${n.meta.client_id}`)
+                              }}
+                            >
+                              <div className="w-8 h-8 rounded-lg bg-[#BA7517]/10 border border-[#BA7517]/20 flex items-center justify-center text-sm flex-shrink-0">
+                                {NOTIF_ICON[n.type] || NOTIF_ICON.default}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-[12px] font-medium text-[#F7F4EE] leading-tight truncate">{n.titre}</p>
+                                <p className="text-[10px] text-[#F7F4EE]/40 mt-0.5 leading-snug line-clamp-2">{n.message}</p>
+                              </div>
+                              <span className="text-[9px] text-[#F7F4EE]/25 flex-shrink-0 mt-0.5">{formatNotifDate(n.created_at)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      <div className="border-t border-[#F7F4EE]/[0.06]">
+                        <button
+                          onClick={() => { setNotifOpen(false); router.push('/dashboard/notifications') }}
+                          className="w-full py-3 text-[10px] tracking-[0.15em] uppercase font-medium text-[#BA7517] hover:bg-[#BA7517]/10 transition-colors"
+                        >
+                          Voir toutes les notifications →
+                        </button>
+                      </div>
+                    </div>
                   )}
-                </button>
+                </div>
                 <button onClick={handleLogout} className="text-[8px] tracking-[0.25em] text-[#F7F4EE] opacity-20 uppercase hover:opacity-50 transition-opacity">Déconnexion</button>
               </div>
             </div>
