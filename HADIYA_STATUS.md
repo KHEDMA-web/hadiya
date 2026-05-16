@@ -474,6 +474,7 @@ N8N_WEBHOOK_URL=https://n8n.domain.com/webhook/xxx   # optionnel
 ### Bugs connus
 - [x] **Auth middleware passif** : ✅ Corrigé — `createServerClient` de `@supabase/ssr`, redirect server-side, 0 flash blanc
 - [x] **Lookup employé via email** : ✅ Corrigé — `getUserProfile()` utilise maintenant `employes.salon_id` pour trouver le salon
+- [x] **Création employé sans salon_id** : ✅ Corrigé — API route `/api/employes/create` avec service role, `salon_id` correctement inséré, session propriétaire préservée
 - [ ] **`SUPABASE_SERVICE_ROLE_KEY` absent du `.env.local`** : Le webhook Chargily crashe en local si cette variable n'est pas définie.
 - [ ] **Turbopack désactivé** : `npm run dev --webpack` — cause à identifier (conflit possible avec Tailwind 4 ou CSS modules).
 
@@ -481,7 +482,7 @@ N8N_WEBHOOK_URL=https://n8n.domain.com/webhook/xxx   # optionnel
 - [ ] **Passage en production Chargily** : Changer `CHARGILY_SECRET_KEY` dans Vercel + URL `pay.chargily.net/test/api/v2/` → `pay.chargily.net/api/v2/` dans `/api/checkout/route.ts` — en attente des vraies clés
 - [ ] **Envoi WhatsApp / Email** : Dépend de n8n (`N8N_WEBHOOK_URL`) — voir section n8n ci-dessous
 - [x] **Isolation multi-salon** : ✅ Toutes les pages dashboard filtrent par `salon_id` — clients, transactions, notifications, cartes, commandes, produits, statistiques, scanner, nouvelle carte. SQL à exécuter (voir Colonnes Supabase ci-dessous).
-- [ ] **Logo salon** : Upload dans Paramètres → Supabase Storage bucket `logos` (public) → affiché sur `/gift-card/[slug]`, dashboard, `/carte/[uid]`. Prérequis : créer le bucket `logos` public dans Supabase Storage.
+- [x] **Logo salon** : Upload Supabase Storage bucket `logos` → affiché sur `/gift-card/[slug]`, dashboard, `/carte/[uid]` + footer "by Hadiya".
 - [ ] **Mode offline complet** : Le SW met en cache le shell mais les données Supabase ne sont pas cachées offline.
 
 ### n8n — Configuration requise

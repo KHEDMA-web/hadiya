@@ -99,7 +99,7 @@ export default function ReservationsPage() {
 
       const [{ data: cls }, { data: svcs }, { data: emps }] = await Promise.all([
         supabase.from('clients').select('id, prenom, nom, telephone').eq('salon_id', sid).order('prenom'),
-        supabase.from('menu_items').select('id, nom, emoji, duree_minutes, prix').eq('salon_id', sid).eq('actif', true).order('nom'),
+        supabase.from('menu_items').select('id, nom, emoji, duree_minutes, prix').eq('salon_id', sid).eq('actif', true).neq('categorie', 'consommable').order('nom'),
         supabase.from('employes').select('id, prenom, nom').eq('salon_id', sid).eq('actif', true).order('prenom'),
       ])
       setClients((cls ?? []) as Client[])
