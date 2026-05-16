@@ -116,6 +116,7 @@ export default function Produits() {
   const soinsCount = items.filter(p => isSoin(p.categorie) && p.actif).length
   const consosCount = items.filter(p => !isSoin(p.categorie) && p.actif).length
   const alertes = items.filter(p => !isSoin(p.categorie) && getStockStatus(p) !== 'ok')
+  const legacySoins = items.filter(p => p.categorie === 'soin')
 
   const openAdd = () => {
     setEditing(null); setErreur(''); setFormType(section)
@@ -265,6 +266,27 @@ export default function Produits() {
             <button onClick={() => setSearch('')} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#8A8275] hover:text-[#2C2A25] text-lg leading-none">×</button>
           )}
         </div>
+
+        {/* Alerte sous-catégories legacy */}
+        {section === 'soin' && legacySoins.length > 0 && (
+          <div className="bg-white border border-amber-200 rounded-2xl p-4 shadow-sm">
+            <p className="text-[10px] font-semibold text-amber-600 uppercase tracking-wider mb-2">
+              ⚠ {legacySoins.length} soin{legacySoins.length > 1 ? 's' : ''} sans sous-catégorie — cliquez Modifier pour les reclassifier
+            </p>
+            <div className="flex flex-col gap-1.5">
+              {legacySoins.map(p => (
+                <div key={p.id} className="flex items-center gap-2">
+                  <span>{p.emoji || '✨'}</span>
+                  <p className="text-sm text-[#2C2A25] flex-1 truncate">{p.nom}</p>
+                  <button onClick={() => openEdit(p)}
+                    className="text-[9px] font-bold px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 hover:bg-amber-200 transition-colors">
+                    Modifier ›
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Alertes stock */}
         {section === 'consommable' && alertes.length > 0 && (

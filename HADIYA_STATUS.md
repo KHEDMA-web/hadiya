@@ -309,7 +309,7 @@ Chargily → POST /api/webhook/chargily → vérif HMAC ✅ → Supabase → n8n
 ### En attente
 - [ ] **Passer Chargily en production** — `CHARGILY_SECRET_KEY` Vercel + URL `/api/checkout/route.ts` (en attente des clés)
 - [ ] **n8n WhatsApp** — `N8N_WEBHOOK_URL` dans Vercel + workflow n8n
-- [ ] **Sous-catégories soins** — éditer les 4 soins (categorie=`soin` legacy) dans Produits
+- [x] **Sous-catégories soins** — bannière alerte dans Produits > Soins pour identifier et reclassifier les soins legacy
 
 ### ✅ Fait session 2026-05-16
 - [x] Isolation multi-salon complète — toutes les pages filtrent par `salon_id`
