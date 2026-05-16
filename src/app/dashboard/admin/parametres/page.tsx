@@ -4,6 +4,32 @@ import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import BackButton from '../../_components/BackButton'
 
+function Field({ label, value, onChange, placeholder, type = 'text' }: {
+  label: string; value: string; onChange: (v: string) => void; placeholder?: string; type?: string
+}) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label className="text-xs text-[#8A8275] font-medium">{label}</label>
+      <input type={type} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
+        className="w-full border border-[#C4B89E] rounded-xl px-4 py-3 text-sm text-[#2C2A25] outline-none focus:border-[#BA7517] focus:ring-1 focus:ring-[#BA7517]/20 bg-[#F7F4EE] placeholder:text-[#B0A898]" />
+    </div>
+  )
+}
+
+function NumberField({ label, value, onChange, min, sub }: {
+  label: string; value: number; onChange: (v: number) => void; min?: number; sub?: string
+}) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label className="text-xs text-[#8A8275] font-medium">{label}</label>
+      {sub && <p className="text-[10px] text-[#B0A898] -mt-1">{sub}</p>}
+      <input type="number" value={value} min={min ?? 0}
+        onChange={e => onChange(parseInt(e.target.value) || 0)}
+        className="w-full border border-[#C4B89E] rounded-xl px-4 py-3 text-sm text-[#2C2A25] outline-none focus:border-[#BA7517] focus:ring-1 focus:ring-[#BA7517]/20 bg-[#F7F4EE]" />
+    </div>
+  )
+}
+
 function toSlug(nom: string) {
   return nom.toLowerCase()
     .normalize('NFD').replace(/[̀-ͯ]/g, '')
@@ -146,28 +172,6 @@ export default function Parametres() {
       setTimeout(() => setSaved(false), 2500)
     }
   }
-
-  const Field = ({ label, value, onChange, placeholder, type = 'text' }: {
-    label: string; value: string; onChange: (v: string) => void; placeholder?: string; type?: string
-  }) => (
-    <div className="flex flex-col gap-1.5">
-      <label className="text-xs text-[#8A8275] font-medium">{label}</label>
-      <input type={type} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
-        className="w-full border border-[#C4B89E] rounded-xl px-4 py-3 text-sm text-[#2C2A25] outline-none focus:border-[#BA7517] focus:ring-1 focus:ring-[#BA7517]/20 bg-[#F7F4EE] placeholder:text-[#B0A898]" />
-    </div>
-  )
-
-  const NumberField = ({ label, value, onChange, min, sub }: {
-    label: string; value: number; onChange: (v: number) => void; min?: number; sub?: string
-  }) => (
-    <div className="flex flex-col gap-1.5">
-      <label className="text-xs text-[#8A8275] font-medium">{label}</label>
-      {sub && <p className="text-[10px] text-[#B0A898] -mt-1">{sub}</p>}
-      <input type="number" value={value} min={min ?? 0}
-        onChange={e => onChange(parseInt(e.target.value) || 0)}
-        className="w-full border border-[#C4B89E] rounded-xl px-4 py-3 text-sm text-[#2C2A25] outline-none focus:border-[#BA7517] focus:ring-1 focus:ring-[#BA7517]/20 bg-[#F7F4EE]" />
-    </div>
-  )
 
   const tabs = [
     { id: 'salon',         label: 'Salon',         icon: '⊹' },
