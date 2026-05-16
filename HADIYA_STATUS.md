@@ -481,8 +481,35 @@ N8N_WEBHOOK_URL=https://n8n.domain.com/webhook/xxx   # optionnel
 
 ### Fonctionnalités manquantes
 - [ ] **Passage en production Chargily** : Changer `CHARGILY_SECRET_KEY` dans Vercel + URL `pay.chargily.net/test/api/v2/` → `pay.chargily.net/api/v2/` dans `/api/checkout/route.ts` — en attente des vraies clés
-- [ ] **Envoi WhatsApp / Email** : Dépend de n8n (`N8N_WEBHOOK_URL`) — non configuré par défaut, livraison silencieuse si absent.
+- [ ] **Envoi WhatsApp / Email** : Dépend de n8n (`N8N_WEBHOOK_URL`) — voir section n8n ci-dessous
+- [ ] **Isolation multi-salon** : Filtrer clients/transactions/cartes/notifications par `salon_id` — actuellement tous les salons voient tout (critique avant d'onboarder plusieurs salons)
+- [ ] **Logo salon** : Colonne `logo_url` existe mais pas d'UI d'upload (Supabase Storage)
 - [ ] **Mode offline complet** : Le SW met en cache le shell mais les données Supabase ne sont pas cachées offline.
+
+### n8n — Configuration requise
+**Ce qu'il faut :**
+1. **Héberger n8n** (2 options) :
+   - n8n Cloud : ~20$/mois (simple, géré) → n8n.io
+   - Auto-hébergé sur VPS : ~5-10$/mois (Hetzner/DigitalOcean) + n8n gratuit (open source)
+2. **API WhatsApp** (au choix) :
+   - **UltraMsg** : ~15$/mois — le plus simple, marche bien pour l'Algérie
+   - **Wassenger** : ~25$/mois — plus stable
+   - **360dialog** : ~50€/mois — officiel Meta, meilleure délivrabilité
+3. **Compte WhatsApp Business** avec numéro dédié
+
+**Coût total estimé :** 20-60$/mois selon les choix
+
+**Ce qui est déjà prêt dans le code :**
+Le webhook Chargily envoie déjà ce payload à n8n :
+```json
+{ "phone", "email", "prenom", "nom", "montant", "message", "offertPar", "carteId" }
+```
+Il suffit d'ajouter `N8N_WEBHOOK_URL` dans Vercel env et de créer le workflow n8n.
+
+**Workflow n8n à créer :**
+- Trigger : Webhook (reçoit le payload de Hadiya)
+- Action 1 : WhatsApp → bénéficiaire ("Tu as reçu une carte cadeau de X DA de la part de Y")
+- Action 2 (optionnel) : Email → acheteur (confirmation avec détails)
 
 ### ✅ Résolu récemment
 - [x] **Lookup employé** : `getUserProfile()` utilise `employes.salon_id` — plus de lookup email fragile
