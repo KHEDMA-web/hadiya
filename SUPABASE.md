@@ -6,7 +6,7 @@
 
 **employes** — id · salon_id · prenom · nom · email · role(caissier/receptionniste/manager) · permissions(jsonb) · actif(bool)
 
-**clients** — id · salon_id · prenom · nom · telephone · points(int) · niveau · allergies · preferences_massage · notes_praticien
+**clients** — id · salon_id · prenom · nom · telephone · date_naissance(date) · points(int) · niveau · allergies · preferences_massage · notes_praticien
 
 **cartes** — id · salon_id · uid_rfid · type(cadeau/fidelite) · solde · points · niveau · statut · message_perso · offert_par · date_expiration · source(online/comptoir) · first_opened_at
 

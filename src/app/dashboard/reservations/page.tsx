@@ -81,8 +81,10 @@ function SectionLabel({ children, required }: { children: React.ReactNode; requi
 const emptyForm = {
   clientMode: 'existing' as 'existing' | 'new',
   clientId: '',
+  prenomClient: '',
   nomClient: '',
   telClient: '',
+  dateNaissance: '',
   serviceId: '',
   employeId: '',
   date: isoDate(new Date()),
@@ -161,7 +163,7 @@ export default function ReservationsPage() {
   const handleSave = async () => {
     if (!salonId) return
     if (form.clientMode === 'existing' && !form.clientId) { setErreur('Sélectionnez un client'); return }
-    if (form.clientMode === 'new' && !form.nomClient.trim()) { setErreur('Saisissez le nom du client'); return }
+    if (form.clientMode === 'new' && (!form.prenomClient.trim() || !form.nomClient.trim())) { setErreur('Prénom et nom obligatoires'); return }
     if (!form.serviceId) { setErreur('Sélectionnez un service'); return }
     if (!form.date || !form.heure) { setErreur('Choisissez une date et une heure'); return }
 
@@ -171,12 +173,18 @@ export default function ReservationsPage() {
     let clientId = form.clientId
 
     if (form.clientMode === 'new') {
-      const parts = form.nomClient.trim().split(' ')
-      const prenom = parts[0]
-      const nom = parts.slice(1).join(' ') || '-'
+      const prenom = form.prenomClient.trim()
+      const nom = form.nomClient.trim()
       const { data: newClient, error: clientError } = await supabase
         .from('clients')
-        .insert({ salon_id: salonId, prenom, nom, telephone: form.telClient || null, points: 0, niveau: 'bronze' })
+        .insert({
+          salon_id: salonId,
+          prenom,
+          nom,
+          telephone: form.telClient || null,
+          date_naissance: form.dateNaissance || null,
+          points: 0,
+        })
         .select('id')
         .single()
       if (clientError) { setErreur(clientError.message); setSaving(false); return }
@@ -649,12 +657,23 @@ export default function ReservationsPage() {
                     </div>
                   ) : (
                     <div className="flex flex-col gap-2">
-                      <input value={form.nomClient} onChange={e => setForm(f => ({ ...f, nomClient: e.target.value }))}
-                        placeholder="Nom complet *"
-                        className="w-full bg-[#F7F4EE] border border-[#E8E0CE] rounded-xl px-3.5 py-2.5 text-[13px] text-[#2C2A25] outline-none focus:border-[#BA7517] focus:bg-white transition-colors placeholder:text-[#B0A898]" />
+                      <div className="grid grid-cols-2 gap-2">
+                        <input value={form.prenomClient} onChange={e => setForm(f => ({ ...f, prenomClient: e.target.value }))}
+                          placeholder="Prénom *"
+                          className="w-full bg-[#F7F4EE] border border-[#E8E0CE] rounded-xl px-3.5 py-2.5 text-[13px] text-[#2C2A25] outline-none focus:border-[#BA7517] focus:bg-white transition-colors placeholder:text-[#B0A898]" />
+                        <input value={form.nomClient} onChange={e => setForm(f => ({ ...f, nomClient: e.target.value }))}
+                          placeholder="Nom *"
+                          className="w-full bg-[#F7F4EE] border border-[#E8E0CE] rounded-xl px-3.5 py-2.5 text-[13px] text-[#2C2A25] outline-none focus:border-[#BA7517] focus:bg-white transition-colors placeholder:text-[#B0A898]" />
+                      </div>
                       <input value={form.telClient} onChange={e => setForm(f => ({ ...f, telClient: e.target.value }))}
                         placeholder="Téléphone" type="tel"
                         className="w-full bg-[#F7F4EE] border border-[#E8E0CE] rounded-xl px-3.5 py-2.5 text-[13px] text-[#2C2A25] outline-none focus:border-[#BA7517] focus:bg-white transition-colors placeholder:text-[#B0A898]" />
+                      <div className="flex flex-col gap-1">
+                        <label className="text-[10px] text-[#8A8275] uppercase tracking-wider">Date de naissance</label>
+                        <input value={form.dateNaissance} onChange={e => setForm(f => ({ ...f, dateNaissance: e.target.value }))}
+                          type="date"
+                          className="w-full bg-[#F7F4EE] border border-[#E8E0CE] rounded-xl px-3.5 py-2.5 text-[13px] text-[#2C2A25] outline-none focus:border-[#BA7517] focus:bg-white transition-colors" />
+                      </div>
                       <p className="text-[10px] text-[#8A8275] flex items-center gap-1.5 mt-0.5">
                         <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><circle cx="5" cy="5" r="4"/><path d="M5 3v2.5M5 7v.01"/></svg>
                         Ce client sera ajouté à votre liste.
