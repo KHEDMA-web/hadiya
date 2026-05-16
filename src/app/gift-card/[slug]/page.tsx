@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
 interface SalonInfo {
@@ -28,7 +29,9 @@ const INITIAL_FORM: FormState = {
   birthDate: "", from: "", message: "", selectedAmount: null, customAmount: "",
 };
 
-export default function GiftCardSalonPage({ params }: { params: { slug: string } }) {
+export default function GiftCardSalonPage() {
+  const params = useParams();
+  const slug = params.slug as string;
   const [salon, setSalon] = useState<SalonInfo | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [step, setStep] = useState(0);
@@ -37,16 +40,17 @@ export default function GiftCardSalonPage({ params }: { params: { slug: string }
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!slug) return;
     supabase
       .from("salons")
       .select("id, nom, slug")
-      .eq("slug", params.slug)
+      .eq("slug", slug)
       .single()
       .then(({ data }) => {
         if (data) setSalon(data);
         else setNotFound(true);
       });
-  }, [params.slug]);
+  }, [slug]);
 
   const setField = (field: keyof FormState, value: string | number | null) =>
     setForm((f) => ({ ...f, [field]: value }));
