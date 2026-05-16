@@ -105,7 +105,10 @@ N8N_WEBHOOK_URL                 # optionnel
 - `commandes` et `commande_items` référencées dans le schéma mais pages non créées
 
 ## Workflow session
-Au début de chaque session, lire la section "CHECKLIST SESSION EN COURS" dans `HADIYA_STATUS.md` et présenter les tâches en attente à l'utilisateur. Quand une tâche est terminée, la cocher dans le fichier immédiatement.
+1. Au début de chaque session, lire la section 7 "CHECKLIST SESSION EN COURS" dans `HADIYA_STATUS.md` et présenter les tâches en attente à l'utilisateur.
+2. Quand une tâche est terminée, la cocher dans `HADIYA_STATUS.md` **immédiatement sans attendre**.
+3. Après chaque modification Supabase (table/colonne/bucket), mettre à jour `SUPABASE.md` **immédiatement**.
+4. En fin de session, ajouter les tâches accomplies dans la section "✅ Fait" de `HADIYA_STATUS.md`.
 
 ## Conventions de code
 - TypeScript strict — pas de `any`
