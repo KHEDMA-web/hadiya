@@ -106,6 +106,13 @@ export default function Parametres() {
   const [userEmail, setUserEmail] = useState('')
   const [activeSection, setActiveSection] = useState<'salon' | 'fidelite' | 'abonnement' | 'notifications' | 'securite'>('salon')
   const [copied, setCopied] = useState(false)
+  const [showPassForm, setShowPassForm] = useState(false)
+  const [newPass, setNewPass] = useState('')
+  const [confirmPass, setConfirmPass] = useState('')
+  const [passLoading, setPassLoading] = useState(false)
+  const [passMsg, setPassMsg] = useState<{ ok: boolean; text: string } | null>(null)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [sessionInfo, setSessionInfo] = useState<{ lastSignIn: string } | null>(null)
 
   useEffect(() => {
     const init = async () => {
@@ -113,6 +120,7 @@ export default function Parametres() {
       if (!session) { router.push('/login'); return }
       const email = session.user.email || ''
       setUserEmail(email)
+      setSessionInfo({ lastSignIn: session.user.last_sign_in_at || '' })
       const { data } = await supabase.from('salons').select('*').eq('email', email).single()
       if (data) setSalon({
         ...data,
@@ -171,6 +179,27 @@ export default function Parametres() {
       setSaved(true)
       setTimeout(() => setSaved(false), 2500)
     }
+  }
+
+  const handleChangePassword = async () => {
+    if (newPass.length < 6) { setPassMsg({ ok: false, text: 'Minimum 6 caractères' }); return }
+    if (newPass !== confirmPass) { setPassMsg({ ok: false, text: 'Les mots de passe ne correspondent pas' }); return }
+    setPassLoading(true)
+    setPassMsg(null)
+    const { error } = await supabase.auth.updateUser({ password: newPass })
+    setPassLoading(false)
+    if (error) {
+      setPassMsg({ ok: false, text: error.message })
+    } else {
+      setPassMsg({ ok: true, text: 'Mot de passe mis à jour ✓' })
+      setNewPass(''); setConfirmPass('')
+      setTimeout(() => { setShowPassForm(false); setPassMsg(null) }, 2000)
+    }
+  }
+
+  const handleSignOutAll = async () => {
+    await supabase.auth.signOut({ scope: 'global' })
+    router.push('/login')
   }
 
   const tabs = [
@@ -534,40 +563,106 @@ export default function Parametres() {
             {/* SECURITE */}
             {activeSection === 'securite' && (
               <div className="flex flex-col gap-4">
+
+                {/* Mot de passe */}
                 <div className="bg-white border border-[#C4B89E] rounded-2xl p-6 shadow-md flex flex-col gap-4">
                   <div className="flex items-center gap-2 mb-1">
                     <div className="w-1 h-5 bg-[#BA7517] rounded-full" />
-                    <p className="text-xs font-semibold text-[#2C2A25] uppercase tracking-wider">Accès & sécurité</p>
+                    <p className="text-xs font-semibold text-[#2C2A25] uppercase tracking-wider">Mot de passe</p>
                   </div>
-                  {[
-                    { label: 'Changer le mot de passe', sub: 'Modifier le mot de passe du compte',    action: 'Modifier'   },
-                    { label: 'PIN de caisse',            sub: 'Code PIN pour déverrouiller la caisse', action: 'Configurer' },
-                    { label: 'Sessions actives',         sub: '1 session active · Alger',              action: 'Voir'       },
-                  ].map(item => (
-                    <div key={item.label} className="flex items-center justify-between py-3 border-b border-[#EDE8DE] last:border-0">
-                      <div>
-                        <p className="text-sm text-[#2C2A25] font-medium">{item.label}</p>
-                        <p className="text-[10px] text-[#8A8275] mt-0.5">{item.sub}</p>
-                      </div>
-                      <button className="text-[10px] font-medium uppercase tracking-wide transition-colors hover:opacity-70"
-                        style={{ color: '#BA7517' }}>{item.action}</button>
+                  <div className="flex items-center justify-between py-1">
+                    <div>
+                      <p className="text-sm text-[#2C2A25] font-medium">Changer le mot de passe</p>
+                      <p className="text-[10px] text-[#8A8275] mt-0.5">{userEmail}</p>
                     </div>
-                  ))}
+                    <button
+                      onClick={() => { setShowPassForm(f => !f); setPassMsg(null); setNewPass(''); setConfirmPass('') }}
+                      className="text-[10px] font-medium uppercase tracking-wide transition-colors hover:opacity-70"
+                      style={{ color: '#BA7517' }}>
+                      {showPassForm ? 'Annuler' : 'Modifier'}
+                    </button>
+                  </div>
+                  {showPassForm && (
+                    <div className="flex flex-col gap-3 pt-2 border-t border-[#EDE8DE]">
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-xs text-[#8A8275] font-medium">Nouveau mot de passe</label>
+                        <input type="password" value={newPass} onChange={e => setNewPass(e.target.value)}
+                          placeholder="Minimum 6 caractères"
+                          className="w-full border border-[#C4B89E] rounded-xl px-4 py-3 text-sm text-[#2C2A25] outline-none focus:border-[#BA7517] bg-[#F7F4EE] placeholder:text-[#B0A898]" />
+                      </div>
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-xs text-[#8A8275] font-medium">Confirmer le mot de passe</label>
+                        <input type="password" value={confirmPass} onChange={e => setConfirmPass(e.target.value)}
+                          placeholder="Répéter le mot de passe"
+                          className="w-full border border-[#C4B89E] rounded-xl px-4 py-3 text-sm text-[#2C2A25] outline-none focus:border-[#BA7517] bg-[#F7F4EE] placeholder:text-[#B0A898]" />
+                      </div>
+                      {passMsg && (
+                        <p className={`text-[11px] font-medium ${passMsg.ok ? 'text-emerald-600' : 'text-rose-500'}`}>{passMsg.text}</p>
+                      )}
+                      <button onClick={handleChangePassword} disabled={passLoading || !newPass || !confirmPass}
+                        className="w-full py-3 rounded-xl text-sm font-medium bg-[#2C2A25] text-[#F7F4EE] hover:opacity-90 transition disabled:opacity-40">
+                        {passLoading ? 'Mise à jour...' : 'Mettre à jour le mot de passe'}
+                      </button>
+                    </div>
+                  )}
                 </div>
+
+                {/* Sessions */}
                 <div className="bg-white border border-[#C4B89E] rounded-2xl p-6 shadow-md flex flex-col gap-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="w-1 h-5 bg-[#BA7517] rounded-full" />
+                    <p className="text-xs font-semibold text-[#2C2A25] uppercase tracking-wider">Sessions actives</p>
+                  </div>
+                  <div className="flex items-center gap-3 p-3 rounded-xl border border-[#E8E2D5] bg-[#F7F4EE]">
+                    <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-600 text-sm flex-shrink-0">✓</div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-[#2C2A25] font-medium truncate">{userEmail}</p>
+                      {sessionInfo?.lastSignIn && (
+                        <p className="text-[10px] text-[#8A8275] mt-0.5">
+                          Dernière connexion : {new Date(sessionInfo.lastSignIn).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                      )}
+                    </div>
+                    <span className="text-[9px] px-2 py-0.5 rounded-full font-medium bg-emerald-100 text-emerald-700 flex-shrink-0">Active</span>
+                  </div>
+                  <button onClick={handleSignOutAll}
+                    className="w-full py-2.5 rounded-xl text-xs font-medium uppercase tracking-wide border border-[#C4B89E] text-[#8A8275] hover:text-[#2C2A25] hover:border-[#2C2A25] transition-colors">
+                    Se déconnecter de tous les appareils
+                  </button>
+                </div>
+
+                {/* Zone dangereuse */}
+                <div className="bg-white border border-rose-200 rounded-2xl p-6 shadow-md flex flex-col gap-4">
                   <div className="flex items-center gap-2 mb-1">
                     <div className="w-1 h-5 bg-rose-400 rounded-full" />
                     <p className="text-xs font-semibold text-[#2C2A25] uppercase tracking-wider">Zone dangereuse</p>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-[#2C2A25] font-medium">Supprimer le compte</p>
-                      <p className="text-[10px] text-[#8A8275] mt-0.5">Action irréversible — toutes les données seront perdues</p>
+                  {!showDeleteConfirm ? (
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-[#2C2A25] font-medium">Supprimer le compte</p>
+                        <p className="text-[10px] text-[#8A8275] mt-0.5">Action irréversible — contactez le support pour confirmer</p>
+                      </div>
+                      <button onClick={() => setShowDeleteConfirm(true)}
+                        className="text-[10px] text-rose-500 font-medium uppercase tracking-wide border border-rose-500/30 px-3 py-1.5 rounded-lg hover:bg-rose-500/5 transition-colors">
+                        Supprimer
+                      </button>
                     </div>
-                    <button className="text-[10px] text-rose-500 font-medium uppercase tracking-wide border border-rose-500/30 px-3 py-1.5 rounded-lg hover:bg-rose-500/5 transition-colors">
-                      Supprimer
-                    </button>
-                  </div>
+                  ) : (
+                    <div className="flex flex-col gap-3">
+                      <p className="text-sm text-[#2C2A25]">Pour supprimer votre compte et toutes vos données, contactez le support Hadiya via WhatsApp. Cette action est irréversible.</p>
+                      <div className="flex gap-2">
+                        <button onClick={() => setShowDeleteConfirm(false)}
+                          className="flex-1 py-2.5 rounded-xl text-xs font-medium border border-[#C4B89E] text-[#8A8275] hover:text-[#2C2A25] transition-colors">
+                          Annuler
+                        </button>
+                        <a href="https://wa.me/message/HADIYASUPPORT" target="_blank" rel="noopener noreferrer"
+                          className="flex-1 py-2.5 rounded-xl text-xs font-medium bg-rose-500 text-white hover:bg-rose-600 transition-colors text-center">
+                          Contacter le support
+                        </a>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
