@@ -105,6 +105,7 @@ export default function ReservationsPage() {
   const [form, setForm] = useState(emptyForm)
   const [saving, setSaving] = useState(false)
   const [erreur, setErreur] = useState('')
+  const [newCarte, setNewCarte] = useState<{ uid: string; prenom: string } | null>(null)
   const [clients, setClients] = useState<Client[]>([])
   const [services, setServices] = useState<Service[]>([])
   const [employes, setEmployes] = useState<Employe[]>([])
@@ -190,6 +191,21 @@ export default function ReservationsPage() {
       if (clientError) { setErreur(clientError.message); setSaving(false); return }
       clientId = newClient.id
       setClients(prev => [...prev, { id: newClient.id, prenom, nom, telephone: form.telClient || '' }].sort((a, b) => a.prenom.localeCompare(b.prenom)))
+
+      // Créer une carte fidélité automatiquement
+      const uid = crypto.randomUUID().replace(/-/g, '').slice(0, 16).toUpperCase()
+      await supabase.from('cartes').insert({
+        salon_id: salonId,
+        client_id: newClient.id,
+        uid_rfid: uid,
+        type: 'fidelite',
+        solde: 0,
+        points: 0,
+        niveau: 'bronze',
+        statut: 'active',
+        source: 'comptoir',
+      })
+      setNewCarte({ uid, prenom })
     }
 
     const dateHeure = new Date(`${form.date}T${form.heure}:00`).toISOString()
@@ -439,6 +455,24 @@ export default function ReservationsPage() {
           </div>
         )}
       </div>
+
+      {/* Bannière succès nouvelle carte */}
+      {newCarte && (
+        <div className="mx-4 mt-4 max-w-lg mx-auto">
+          <div className="bg-emerald-50 border border-emerald-200 rounded-2xl px-4 py-3 flex items-center gap-3">
+            <span className="text-xl flex-shrink-0">🎉</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-[12px] font-semibold text-emerald-800">Carte fidélité créée pour {newCarte.prenom}</p>
+              <a href={`/carte/${newCarte.uid}`} target="_blank" rel="noopener noreferrer"
+                className="text-[11px] text-emerald-600 hover:underline">
+                Voir la carte & QR code →
+              </a>
+            </div>
+            <button onClick={() => setNewCarte(null)}
+              className="text-emerald-400 hover:text-emerald-700 text-lg leading-none flex-shrink-0">×</button>
+          </div>
+        </div>
+      )}
 
       {/* ── VUE JOUR ── */}
       {viewMode === 'jour' && (
