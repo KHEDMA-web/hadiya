@@ -154,23 +154,20 @@ export default function FicheClient() {
     if (!carte || rechargeLoading || isNaN(amt) || amt <= 0) return
     setRechargeLoading(true)
     setRechargeSuccess('')
-    const pts = calcPoints(amt, config)
-    const nouveauxPoints = carte.points + pts
     const nouveauSolde = carte.solde + amt
-    const bonNiveau = getNiveau(nouveauxPoints, config)
     await Promise.all([
-      supabase.from('cartes').update({ solde: nouveauSolde, points: nouveauxPoints, niveau: bonNiveau }).eq('id', carte.id),
+      supabase.from('cartes').update({ solde: nouveauSolde }).eq('id', carte.id),
       supabase.from('transactions').insert({
         carte_id: carte.id, type: 'recharge', montant: amt,
-        points_gagnes: pts, description: `Recharge — ${amt.toLocaleString('fr-FR')} DA`,
+        description: `Recharge — ${amt.toLocaleString('fr-FR')} DA`,
       }),
     ])
-    setCarte((c: any) => ({ ...c, solde: nouveauSolde, points: nouveauxPoints, niveau: bonNiveau }))
+    setCarte((c: any) => ({ ...c, solde: nouveauSolde }))
     setTransactions(prev => [{
-      id: `tmp-${Date.now()}`, type: 'recharge', montant: amt, points_gagnes: pts,
+      id: `tmp-${Date.now()}`, type: 'recharge', montant: amt,
       description: `Recharge — ${amt.toLocaleString('fr-FR')} DA`, created_at: new Date().toISOString(),
     }, ...prev.slice(0, 9)])
-    setRechargeSuccess(`${amt.toLocaleString('fr-FR')} DA rechargés · +${pts} pts${bonNiveau !== carte.niveau ? ` · 🎉 Niveau ${bonNiveau} !` : ''}`)
+    setRechargeSuccess(`${amt.toLocaleString('fr-FR')} DA rechargés`)
     setRechargeAmt('')
     setRechargeLoading(false)
     setTimeout(() => setRechargeSuccess(''), 3000)

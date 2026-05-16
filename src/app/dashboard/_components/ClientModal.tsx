@@ -118,19 +118,16 @@ export function ClientModal({ carteData, onClose, onNavigate }: {
   const handleRecharge = async (amt: number) => {
     if (!carte || rechargeLoading || isNaN(amt) || amt <= 0) return
     setRechargeLoading(true)
-    const pts = calcPoints(amt, config)
-    const nouveauxPoints = carte.points + pts
     const nouveauSolde = carte.solde + amt
-    const bonNiveau = getNiveau(nouveauxPoints, config)
     await Promise.all([
-      supabase.from('cartes').update({ solde: nouveauSolde, points: nouveauxPoints, niveau: bonNiveau }).eq('id', carte.id),
+      supabase.from('cartes').update({ solde: nouveauSolde }).eq('id', carte.id),
       supabase.from('transactions').insert({
         carte_id: carte.id, type: 'recharge', montant: amt,
-        points_gagnes: pts, description: `Recharge — ${amt.toLocaleString('fr-FR')} DA`,
+        description: `Recharge — ${amt.toLocaleString('fr-FR')} DA`,
       }),
     ])
-    setCarte((c: any) => ({ ...c, solde: nouveauSolde, points: nouveauxPoints, niveau: bonNiveau }))
-    setRechargeSuccess(`${amt.toLocaleString('fr-FR')} DA rechargés · +${pts} pts${bonNiveau !== niveau ? ` · 🎉 Niveau ${bonNiveau} !` : ''}`)
+    setCarte((c: any) => ({ ...c, solde: nouveauSolde }))
+    setRechargeSuccess(`${amt.toLocaleString('fr-FR')} DA rechargés`)
     setRechargeAmt('')
     setRechargeLoading(false)
     setTimeout(() => setRechargeSuccess(''), 3500)
@@ -318,8 +315,7 @@ export function ClientModal({ carteData, onClose, onNavigate }: {
                   <button key={amt} onClick={() => handleRecharge(amt)} disabled={rechargeLoading}
                     className="py-3.5 rounded-xl border text-sm font-semibold text-[#2C2A25] transition-all disabled:opacity-40 active:scale-95 hover:border-[#BA7517] hover:text-[#BA7517] flex flex-col items-center"
                     style={{ borderColor: 'rgba(196,184,158,0.7)' }}>
-                    <span>{amt >= 1000 ? `${amt / 1000}k` : amt}</span>
-                    <span className="text-[9px] font-normal mt-0.5" style={{ color: '#BA7517' }}>+{calcPoints(amt, config)} pts</span>
+                    <span>{amt >= 1000 ? `${amt / 1000}k` : amt} DA</span>
                   </button>
                 ))}
               </div>
