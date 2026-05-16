@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import BackButton from '../_components/BackButton'
+import { getUserProfile } from '@/lib/auth'
 
 type CommandeItem = {
   id: string
@@ -38,11 +39,14 @@ export default function Commandes() {
     const init = async () => {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) { router.push('/login'); return }
-      const { data } = await supabase
+      const profile = await getUserProfile()
+      const sid = profile?.salonId
+      const q = supabase
         .from('commandes')
         .select('*, clients(prenom, nom), commande_items(id, nom, prix, quantite, emoji)')
         .order('created_at', { ascending: false })
         .limit(100)
+      const { data } = sid ? await q.eq('salon_id', sid) : await q
       setCommandes(data || [])
       setLoading(false)
     }

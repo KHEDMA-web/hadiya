@@ -3,6 +3,7 @@ import { useState, useRef, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import BackButton from '../_components/BackButton'
+import { getUserProfile } from '@/lib/auth'
 
 const NIVEAU_DARK: Record<string, { bg: string; text: string; accent: string }> = {
   Bronze:  { bg: 'rgba(113,43,19,0.3)',  text: '#D4915E', accent: '#D4915E' },
@@ -29,12 +30,13 @@ export default function Scanner() {
   const carteFoundRef = useRef(false)
 
   const loadRecentDebits = async () => {
-    const { data } = await supabase
+    const q = supabase
       .from('transactions')
       .select('id, montant, created_at, cartes(niveau, clients(prenom, nom))')
       .eq('type', 'debit')
       .order('created_at', { ascending: false })
       .limit(6)
+    const { data } = salonIdRef.current ? await q.eq('salon_id', salonIdRef.current) : await q
     setRecentDebits(data ?? [])
   }
 
@@ -88,6 +90,7 @@ export default function Scanner() {
       montant: amt,
       points_gagnes: pts,
       description: `Débit en salon — ${amt} DA`,
+      ...(salonIdRef.current ? { salon_id: salonIdRef.current } : {}),
     })
 
     setCarte({ ...carte, solde: nouveauSolde, points: carte.points + pts })
@@ -136,6 +139,7 @@ export default function Scanner() {
   const [nfcReading, setNfcReading] = useState(false)
   const [qrScanning, setQrScanning] = useState(false)
   const qrScannerRef = useRef<any>(null)
+  const salonIdRef = useRef<string | null>(null)
 
   useEffect(() => {
     if ('NDEFReader' in window) setNfcSupported(true)
@@ -192,7 +196,10 @@ export default function Scanner() {
     }
   }
 
-  useEffect(() => { loadRecentDebits() }, [])
+  useEffect(() => {
+    getUserProfile().then(p => { salonIdRef.current = p?.salonId ?? null })
+    loadRecentDebits()
+  }, [])
 
   const niveau = carte?.niveau || 'Bronze'
   const avatarColors = NIVEAU_DARK[niveau] || NIVEAU_DARK.Bronze

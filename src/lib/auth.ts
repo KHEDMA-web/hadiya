@@ -19,6 +19,7 @@ export type UserProfile = {
   role: string
   permissions: Permissions
   salonNom: string
+  salonId: string | null
 }
 
 export const OWNER_PERMISSIONS: Permissions = {
@@ -60,7 +61,7 @@ export async function getUserProfile(): Promise<UserProfile | null> {
   // Vérifie si c'est le propriétaire
   const { data: salon } = await supabase
     .from('salons')
-    .select('nom, owner_id')
+    .select('id, nom, owner_id')
     .eq('email', userEmail)
     .single()
 
@@ -72,6 +73,7 @@ export async function getUserProfile(): Promise<UserProfile | null> {
       role: 'proprio',
       permissions: OWNER_PERMISSIONS,
       salonNom: salon.nom || userEmail.split('@')[0],
+      salonId: salon.id || null,
     }
   }
 
@@ -102,5 +104,6 @@ export async function getUserProfile(): Promise<UserProfile | null> {
     role: employe.role,
     permissions: employe.permissions as Permissions,
     salonNom,
+    salonId: employe.salon_id || null,
   }
 }

@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import BackButton from '../_components/BackButton'
+import { getUserProfile } from '@/lib/auth'
 
 type Item = { id: string; nom: string; prix: number; emoji: string; qty: number; categorie: string }
 
@@ -32,20 +33,24 @@ export default function Caisse() {
   // ── Init menu Supabase ──
   useEffect(() => {
     const init = async () => {
-      const { data } = await supabase.from('menu_items').select('*').eq('actif', true).order('nom')
+      const profile = await getUserProfile()
+      const sid = profile?.salonId
+      const q = supabase.from('menu_items').select('*').eq('actif', true).order('nom')
+      const { data } = sid ? await q.eq('salon_id', sid) : await q
       if (!data || data.length === 0) {
         const defaults = [
-          { nom: 'Café',           prix: 200,  emoji: '☕', categorie: 'consommable', actif: true },
-          { nom: 'Cocktail détox', prix: 800,  emoji: '🍹', categorie: 'consommable', actif: true },
-          { nom: 'Eau pétillante', prix: 150,  emoji: '💧', categorie: 'consommable', actif: true },
-          { nom: 'Massage 60 min', prix: 4500, emoji: '💆', categorie: 'soin',        actif: true },
-          { nom: 'Soin visage',    prix: 3500, emoji: '✨', categorie: 'soin',        actif: true },
-          { nom: 'Hammam',         prix: 2500, emoji: '🧖', categorie: 'soin',        actif: true },
-          { nom: 'Manucure',       prix: 1800, emoji: '💅', categorie: 'soin',        actif: true },
-          { nom: 'Huile argan',    prix: 2200, emoji: '🫙', categorie: 'consommable', actif: true },
+          { nom: 'Café',           prix: 200,  emoji: '☕', categorie: 'consommable', actif: true, ...(sid ? { salon_id: sid } : {}) },
+          { nom: 'Cocktail détox', prix: 800,  emoji: '🍹', categorie: 'consommable', actif: true, ...(sid ? { salon_id: sid } : {}) },
+          { nom: 'Eau pétillante', prix: 150,  emoji: '💧', categorie: 'consommable', actif: true, ...(sid ? { salon_id: sid } : {}) },
+          { nom: 'Massage 60 min', prix: 4500, emoji: '💆', categorie: 'soin',        actif: true, ...(sid ? { salon_id: sid } : {}) },
+          { nom: 'Soin visage',    prix: 3500, emoji: '✨', categorie: 'soin',        actif: true, ...(sid ? { salon_id: sid } : {}) },
+          { nom: 'Hammam',         prix: 2500, emoji: '🧖', categorie: 'soin',        actif: true, ...(sid ? { salon_id: sid } : {}) },
+          { nom: 'Manucure',       prix: 1800, emoji: '💅', categorie: 'soin',        actif: true, ...(sid ? { salon_id: sid } : {}) },
+          { nom: 'Huile argan',    prix: 2200, emoji: '🫙', categorie: 'consommable', actif: true, ...(sid ? { salon_id: sid } : {}) },
         ]
         await supabase.from('menu_items').insert(defaults)
-        const { data: seeded } = await supabase.from('menu_items').select('*').eq('actif', true).order('nom')
+        const q2 = supabase.from('menu_items').select('*').eq('actif', true).order('nom')
+        const { data: seeded } = sid ? await q2.eq('salon_id', sid) : await q2
         setMenu(seeded ?? [])
       } else {
         setMenu(data)
@@ -73,10 +78,8 @@ export default function Caisse() {
 
   useEffect(() => {
     const load = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session?.user?.email) return
-      const { data } = await supabase.from('salons').select('id, nom').eq('email', session.user.email).single()
-      if (data) { setSalonId(data.id); setSalonNom(data.nom) }
+      const profile = await getUserProfile()
+      if (profile?.salonId) { setSalonId(profile.salonId); setSalonNom(profile.salonNom) }
     }
     load()
   }, [])

@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import BackButton from '../_components/BackButton'
+import { getUserProfile } from '@/lib/auth'
 
 const NIVEAU: Record<string, { badge: string; text: string; avatar: string }> = {
   Bronze:  { badge: 'bg-[#C4813A]/15 text-[#C4813A] border-[#C4813A]/30',  text: '#C4813A', avatar: 'bg-[#C4813A]/20 text-[#C4813A]' },
@@ -18,14 +19,15 @@ export default function Clients() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    supabase
-      .from('clients')
-      .select('*, cartes(*)')
-      .order('created_at', { ascending: false })
-      .then(({ data }) => {
-        setClients(data || [])
-        setLoading(false)
-      })
+    const init = async () => {
+      const profile = await getUserProfile()
+      const sid = profile?.salonId
+      const q = supabase.from('clients').select('*, cartes(*)').order('created_at', { ascending: false })
+      const { data } = sid ? await q.eq('salon_id', sid) : await q
+      setClients(data || [])
+      setLoading(false)
+    }
+    init()
   }, [])
 
   const filtered = clients.filter(c =>

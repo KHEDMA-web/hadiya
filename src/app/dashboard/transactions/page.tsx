@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import BackButton from '../_components/BackButton'
+import { getUserProfile } from '@/lib/auth'
 
 type Transaction = {
   id: string
@@ -44,10 +45,13 @@ export default function Transactions() {
     const init = async () => {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) { router.push('/login'); return }
-      const { data } = await supabase
+      const profile = await getUserProfile()
+      const sid = profile?.salonId
+      const q = supabase
         .from('transactions')
         .select('*, cartes(uid_rfid, type, niveau, clients(prenom, nom, telephone))')
         .order('created_at', { ascending: false })
+      const { data } = sid ? await q.eq('salon_id', sid) : await q
       setTransactions(data || [])
       setLoading(false)
     }

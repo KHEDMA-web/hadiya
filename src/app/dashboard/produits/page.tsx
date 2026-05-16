@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import BackButton from '../_components/BackButton'
+import { getUserProfile } from '@/lib/auth'
 
 const EMOJIS: Record<string, string[]> = {
   'Soins': ['💆','💅','🧖','💇','🛁','🪷','🌸','🌺','🌹','💐','🌿','🍃','🪸','🧴','🕯️','💎','✨','🌟','💫','⭐'],
@@ -92,6 +93,7 @@ export default function Produits() {
   const [erreur, setErreur] = useState('')
   const [stockAdjust, setStockAdjust] = useState<string | null>(null)
   const [adjustVal, setAdjustVal] = useState('')
+  const [salonId, setSalonId] = useState<string | null | undefined>(undefined)
   const [showImport, setShowImport] = useState(false)
   const [importText, setImportText] = useState('')
   const [importPreview, setImportPreview] = useState<{
@@ -122,7 +124,8 @@ export default function Produits() {
   const handleImport = async () => {
     if (importPreview.length === 0) return
     setImporting(true)
-    await supabase.from('menu_items').insert(importPreview)
+    const items = salonId ? importPreview.map(p => ({ ...p, salon_id: salonId })) : importPreview
+    await supabase.from('menu_items').insert(items)
     await fetchProduits()
     setShowImport(false)
     setImportText('')
@@ -130,11 +133,18 @@ export default function Produits() {
     setImporting(false)
   }
 
-  useEffect(() => { fetchProduits() }, [])
+  useEffect(() => {
+    getUserProfile().then(p => setSalonId(p?.salonId ?? null))
+  }, [])
+
+  useEffect(() => {
+    if (salonId !== undefined) fetchProduits()
+  }, [salonId])
 
   const fetchProduits = async () => {
     setLoading(true)
-    const { data, error } = await supabase.from('menu_items').select('*').order('nom')
+    const q = supabase.from('menu_items').select('*').order('nom')
+    const { data, error } = salonId ? await q.eq('salon_id', salonId) : await q
     if (!error) setProduits((data ?? []) as Produit[])
     setLoading(false)
   }
@@ -176,6 +186,7 @@ export default function Produits() {
       stock_actuel:  parseInt(form.stock_actuel)  || 0,
       stock_minimum: parseInt(form.stock_minimum) || 5,
       stock_unite:   form.stock_unite || 'unité',
+      ...(salonId && !editing ? { salon_id: salonId } : {}),
     }
     const { error } = editing
       ? await supabase.from('menu_items').update(payload).eq('id', editing.id)

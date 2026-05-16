@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import BackButton from '../_components/BackButton'
+import { getUserProfile } from '@/lib/auth'
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, PieChart, Pie, Cell,
@@ -195,16 +196,27 @@ export default function Statistiques() {
     const now    = new Date()
     const depuis = getStart(periode)
 
+    const profile = await getUserProfile()
+    const sid = profile?.salonId
+
     const [
       { data: txRaw },
       { data: cartes },
       { data: menuItems },
       { data: commandes },
     ] = await Promise.all([
-      supabase.from('transactions').select('type, montant, points_gagnes, created_at, carte_id, cartes(niveau, clients(id, prenom, nom, created_at))'),
-      supabase.from('cartes').select('id, niveau, solde, statut, clients(id, prenom, nom, created_at)'),
-      supabase.from('menu_items').select('nom, stock_actuel, stock_minimum, prix, cout'),
-      supabase.from('commandes').select('id, total, created_at, commande_items(quantite, prix_unitaire, menu_items(nom, cout))'),
+      (sid
+        ? supabase.from('transactions').select('type, montant, points_gagnes, created_at, carte_id, cartes(niveau, clients(id, prenom, nom, created_at))').eq('salon_id', sid)
+        : supabase.from('transactions').select('type, montant, points_gagnes, created_at, carte_id, cartes(niveau, clients(id, prenom, nom, created_at))')),
+      (sid
+        ? supabase.from('cartes').select('id, niveau, solde, statut, clients(id, prenom, nom, created_at)').eq('salon_id', sid)
+        : supabase.from('cartes').select('id, niveau, solde, statut, clients(id, prenom, nom, created_at)')),
+      (sid
+        ? supabase.from('menu_items').select('nom, stock_actuel, stock_minimum, prix, cout').eq('salon_id', sid)
+        : supabase.from('menu_items').select('nom, stock_actuel, stock_minimum, prix, cout')),
+      (sid
+        ? supabase.from('commandes').select('id, total, created_at, commande_items(quantite, prix_unitaire, menu_items(nom, cout))').eq('salon_id', sid)
+        : supabase.from('commandes').select('id, total, created_at, commande_items(quantite, prix_unitaire, menu_items(nom, cout))')),
     ])
 
     const tx        = txRaw || []

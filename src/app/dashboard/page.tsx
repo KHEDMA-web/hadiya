@@ -56,15 +56,14 @@ export default function Dashboard() {
     if (notifOpen) { setNotifOpen(false); return }
     setNotifOpen(true)
     setNotifLoading(true)
-    const { data } = await supabase
-      .from('notifications')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(5)
+    const sid = userProfile?.salonId
+    const q = supabase.from('notifications').select('*').order('created_at', { ascending: false }).limit(5)
+    const { data } = sid ? await q.eq('salon_id', sid) : await q
     setRecentNotifs(data || [])
     setNotifLoading(false)
     if (data?.some((n: any) => !n.lu)) {
-      await supabase.from('notifications').update({ lu: true }).eq('lu', false)
+      const upQ = supabase.from('notifications').update({ lu: true }).eq('lu', false)
+      sid ? await upQ.eq('salon_id', sid) : await upQ
       setUnreadCount(0)
     }
   }
@@ -94,17 +93,16 @@ export default function Dashboard() {
       setUserProfile(profile)
       setSalonNom(profile?.salonNom || session.user.email?.split('@')[0] || 'Salon')
 
+      const sid = profile?.salonId
       const [{ count: cartes }, { count: clients }, { count: transactions }] = await Promise.all([
-        supabase.from('cartes').select('*', { count: 'exact', head: true }),
-        supabase.from('clients').select('*', { count: 'exact', head: true }),
-        supabase.from('transactions').select('*', { count: 'exact', head: true }),
+        sid ? supabase.from('cartes').select('*', { count: 'exact', head: true }).eq('salon_id', sid) : supabase.from('cartes').select('*', { count: 'exact', head: true }),
+        sid ? supabase.from('clients').select('*', { count: 'exact', head: true }).eq('salon_id', sid) : supabase.from('clients').select('*', { count: 'exact', head: true }),
+        sid ? supabase.from('transactions').select('*', { count: 'exact', head: true }).eq('salon_id', sid) : supabase.from('transactions').select('*', { count: 'exact', head: true }),
       ])
       setStats({ cartes: cartes || 0, clients: clients || 0, transactions: transactions || 0 })
 
-      const { count: notifCount } = await supabase
-        .from('notifications')
-        .select('*', { count: 'exact', head: true })
-        .eq('lu', false)
+      const notifQ = supabase.from('notifications').select('*', { count: 'exact', head: true }).eq('lu', false)
+      const { count: notifCount } = sid ? await notifQ.eq('salon_id', sid) : await notifQ
       setUnreadCount(notifCount || 0)
     }
     init()
@@ -193,6 +191,7 @@ export default function Dashboard() {
     await supabase.from('transactions').insert({
       carte_id: carte.id, type: 'debit', montant: amt,
       points_gagnes: pts, description: `Débit en salon — ${amt} DA`,
+      ...(userProfile?.salonId ? { salon_id: userProfile.salonId } : {}),
     })
     setCarte({ ...carte, solde: nouveauSolde, points: carte.points + pts })
     setScanSuccess(`${amt.toLocaleString('fr-FR')} DA débités · +${pts} pts`)

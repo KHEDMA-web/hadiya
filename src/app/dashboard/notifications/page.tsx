@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
+import { getUserProfile } from "@/lib/auth";
 
 interface Notification {
   id: string;
@@ -23,11 +24,14 @@ export default function NotificationsPage() {
   const router = useRouter();
   const [notifs, setNotifs] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
+  const salonIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     const init = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { router.push("/login"); return; }
+      const profile = await getUserProfile();
+      salonIdRef.current = profile?.salonId ?? null;
       await loadNotifs();
     };
     init();
@@ -39,7 +43,9 @@ export default function NotificationsPage() {
         schema: "public",
         table: "notifications",
       }, (payload) => {
-        setNotifs((prev) => [payload.new as Notification, ...prev]);
+        const n = payload.new as Notification & { salon_id?: string };
+        if (salonIdRef.current && n.salon_id !== salonIdRef.current) return;
+        setNotifs((prev) => [n, ...prev]);
       })
       .subscribe();
 
@@ -48,17 +54,15 @@ export default function NotificationsPage() {
 
   const loadNotifs = async () => {
     setLoading(true);
-    const { data } = await supabase
-      .from("notifications")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .limit(50);
+    const q = supabase.from("notifications").select("*").order("created_at", { ascending: false }).limit(50);
+    const { data } = salonIdRef.current ? await q.eq("salon_id", salonIdRef.current) : await q;
     setNotifs(data || []);
     setLoading(false);
   };
 
   const markAllRead = async () => {
-    await supabase.from("notifications").update({ lu: true }).eq("lu", false);
+    const q = supabase.from("notifications").update({ lu: true }).eq("lu", false);
+    salonIdRef.current ? await q.eq("salon_id", salonIdRef.current) : await q;
     setNotifs((prev) => prev.map((n) => ({ ...n, lu: true })));
   };
 

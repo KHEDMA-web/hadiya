@@ -1,5 +1,5 @@
 # HADIYA — STATUS COMPLET DU PROJET
-> Dernière mise à jour : 2026-05-16 — v3 (middleware SSR + reçu caisse + SQL complet)
+> Dernière mise à jour : 2026-05-16 — v4 (isolation multi-salon complète)
 
 ---
 
@@ -482,7 +482,7 @@ N8N_WEBHOOK_URL=https://n8n.domain.com/webhook/xxx   # optionnel
 ### Fonctionnalités manquantes
 - [ ] **Passage en production Chargily** : Changer `CHARGILY_SECRET_KEY` dans Vercel + URL `pay.chargily.net/test/api/v2/` → `pay.chargily.net/api/v2/` dans `/api/checkout/route.ts` — en attente des vraies clés
 - [ ] **Envoi WhatsApp / Email** : Dépend de n8n (`N8N_WEBHOOK_URL`) — voir section n8n ci-dessous
-- [ ] **Isolation multi-salon** : Filtrer clients/transactions/cartes/notifications par `salon_id` — actuellement tous les salons voient tout (critique avant d'onboarder plusieurs salons)
+- [x] **Isolation multi-salon** : ✅ Toutes les pages dashboard filtrent par `salon_id` — clients, transactions, notifications, cartes, commandes, produits, statistiques, scanner, nouvelle carte. SQL à exécuter (voir Colonnes Supabase ci-dessous).
 - [ ] **Logo salon** : Colonne `logo_url` existe mais pas d'UI d'upload (Supabase Storage)
 - [ ] **Mode offline complet** : Le SW met en cache le shell mais les données Supabase ne sont pas cachées offline.
 
@@ -524,8 +524,9 @@ Il suffit d'ajouter `N8N_WEBHOOK_URL` dans Vercel env et de créer le workflow n
 - [x] **Vérification signature webhook Chargily** : HMAC sha256 via `timingSafeEqual`
 - [x] **Page paiement par salon** : `/gift-card/[slug]` — URL unique par salon
 
-### Colonnes Supabase — toutes ajoutées ✅
-- [x] `cartes.salon_id`
+### Colonnes Supabase
+
+**Déjà ajoutées ✅**
 - [x] `clients.salon_id`
 - [x] `salons.slug` (unique)
 - [x] `salons.avantages_fidelite` (jsonb)
@@ -533,6 +534,19 @@ Il suffit d'ajouter `N8N_WEBHOOK_URL` dans Vercel env et de créer le workflow n
 - [x] `transactions.salon_id` + index
 - [x] `notifications.salon_id` + index
 - [x] `employes.salon_id`
+
+**À exécuter dans Supabase SQL Editor ⚠️**
+```sql
+-- Isolation multi-salon (isolation code déjà fait)
+ALTER TABLE cartes ADD COLUMN IF NOT EXISTS salon_id uuid REFERENCES salons(id);
+UPDATE cartes SET salon_id = clients.salon_id
+FROM clients WHERE cartes.client_id = clients.id AND clients.salon_id IS NOT NULL;
+
+ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS salon_id uuid REFERENCES salons(id);
+UPDATE menu_items SET salon_id = (SELECT id FROM salons LIMIT 1) WHERE salon_id IS NULL;
+
+ALTER TABLE scans ADD COLUMN IF NOT EXISTS salon_id uuid REFERENCES salons(id);
+```
 
 ---
 

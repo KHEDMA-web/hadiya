@@ -1,7 +1,8 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
+import { getUserProfile } from '@/lib/auth'
 import QRCode from 'qrcode'
 import BackButton from '../../_components/BackButton'
 
@@ -15,6 +16,11 @@ export default function NouvelleCarte() {
   const [loading, setLoading] = useState(false)
   const [carteCreee, setCarteCreee] = useState<any>(null)
   const [qrUrl, setQrUrl] = useState('')
+  const [salonId, setSalonId] = useState<string | null>(null)
+
+  useEffect(() => {
+    getUserProfile().then(p => setSalonId(p?.salonId ?? null))
+  }, [])
 
   const handleCreate = async () => {
     if (!form.prenom || !form.nom || !form.montant) return
@@ -25,6 +31,7 @@ export default function NouvelleCarte() {
       nom: form.nom,
       telephone: form.telephone,
       date_naissance: form.date_naissance || null,
+      ...(salonId ? { salon_id: salonId } : {}),
     }).select().single()
 
     const uid = crypto.randomUUID()
@@ -36,6 +43,7 @@ export default function NouvelleCarte() {
       message_perso: form.message,
       offert_par: form.offert_par,
       date_expiration: form.expiration || null,
+      ...(salonId ? { salon_id: salonId } : {}),
     }).select().single()
 
     await supabase.from('transactions').insert({
@@ -43,6 +51,7 @@ export default function NouvelleCarte() {
       type: 'cadeau',
       montant: parseFloat(form.montant),
       description: `Carte cadeau créée — ${form.montant} DA`,
+      ...(salonId ? { salon_id: salonId } : {}),
     })
 
     const url = `${window.location.origin}/carte/${uid}`
