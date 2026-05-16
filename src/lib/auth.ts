@@ -78,18 +78,22 @@ export async function getUserProfile(): Promise<UserProfile | null> {
   // Sinon c'est un employé
   const { data: employe } = await supabase
     .from('employes')
-    .select('nom, prenom, role, permissions')
+    .select('nom, prenom, role, permissions, salon_id')
     .eq('user_id', session.user.id)
     .single()
 
   if (!employe) return null
 
-  // Récupère le nom du salon
-  const { data: salonData } = await supabase
-    .from('salons')
-    .select('nom')
-    .eq('email', userEmail.split('+')[0].split('@')[0])
-    .single()
+  // Récupère le nom du salon via salon_id
+  let salonNom = 'Salon'
+  if (employe.salon_id) {
+    const { data: salonData } = await supabase
+      .from('salons')
+      .select('nom')
+      .eq('id', employe.salon_id)
+      .single()
+    if (salonData?.nom) salonNom = salonData.nom
+  }
 
   return {
     isOwner: false,
@@ -97,6 +101,6 @@ export async function getUserProfile(): Promise<UserProfile | null> {
     prenom: employe.prenom,
     role: employe.role,
     permissions: employe.permissions as Permissions,
-    salonNom: salonData?.nom || 'Salon',
+    salonNom,
   }
 }

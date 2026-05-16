@@ -474,26 +474,28 @@ N8N_WEBHOOK_URL=https://n8n.domain.com/webhook/xxx   # optionnel
 ## 8. CE QUI RESTE À FAIRE (backlog) ⏳
 
 ### Bugs connus
-- [x] **Auth middleware passif** : ✅ Corrigé — middleware utilise `createServerClient` de `@supabase/ssr`, redirige vers `/login` server-side, plus de flash blanc.
-- [ ] **Lookup employé via email** : La fonction `getUserProfile()` cherche le salon par `email` de l'employé (ligne 91 `auth.ts`) avec un split peu robuste — peut échouer pour des emails complexes.
+- [x] **Auth middleware passif** : ✅ Corrigé — `createServerClient` de `@supabase/ssr`, redirect server-side, 0 flash blanc
+- [x] **Lookup employé via email** : ✅ Corrigé — `getUserProfile()` utilise maintenant `employes.salon_id` pour trouver le salon
 - [ ] **`SUPABASE_SERVICE_ROLE_KEY` absent du `.env.local`** : Le webhook Chargily crashe en local si cette variable n'est pas définie.
 - [ ] **Turbopack désactivé** : `npm run dev --webpack` — cause à identifier (conflit possible avec Tailwind 4 ou CSS modules).
 
 ### Fonctionnalités manquantes
 - [ ] **Passage en production Chargily** : Changer `CHARGILY_SECRET_KEY` dans Vercel + URL `pay.chargily.net/test/api/v2/` → `pay.chargily.net/api/v2/` dans `/api/checkout/route.ts` — en attente des vraies clés
 - [ ] **Envoi WhatsApp / Email** : Dépend de n8n (`N8N_WEBHOOK_URL`) — non configuré par défaut, livraison silencieuse si absent.
-- [ ] **Page `/scan`** : Existe mais n'est pas liée au dashboard.
-- [ ] **Commandes / `commande_items`** : Tables mentionnées dans le schéma mais pages non créées.
-- [ ] **Gestion expiration cartes** : Pas de tâche CRON pour désactiver les cartes expirées.
 - [ ] **Mode offline complet** : Le SW met en cache le shell mais les données Supabase ne sont pas cachées offline.
 
 ### ✅ Résolu récemment
+- [x] **Lookup employé** : `getUserProfile()` utilise `employes.salon_id` — plus de lookup email fragile
+- [x] **Page commandes** : `/dashboard/commandes` — liste des commandes POS avec détail articles, CA, recherche
+- [x] **CRON expiration cartes** : Vercel cron `0 2 * * *` → `/api/cron/expire-cartes` (+ `CRON_SECRET` requis dans Vercel env)
+- [x] **Scanner QR dans dashboard** : Bouton 📷 QR Code dans `/dashboard/scanner` — caméra intégrée, auto-fill UID
+- [x] **Page `/scan` liée** : Bouton "📷 Scanner mobile" dans le dashboard → ouvre `/scan` (standalone, sans login)
 - [x] **Auth middleware passif** : Middleware SSR avec `createServerClient` — redirect server-side, 0 flash blanc
 - [x] **Impression reçu caisse** : Ticket `@media print` + `window.print()` — bouton 🖨 sur écran de confirmation
-- [x] **Déconnexion** : Bouton logout dans le header du dashboard (`handleLogout` → `supabase.auth.signOut()`)
-- [x] **Recherche transactions** : Filtres par type (débit/recharge/cadeau) + recherche par client/description
-- [x] **Vérification signature webhook Chargily** : HMAC sha256 via `timingSafeEqual` — requêtes forgées rejetées (401)
-- [x] **Page paiement par salon** : `/gift-card/[slug]` — chaque salon a son URL unique, `salon_id` attaché à la carte/client
+- [x] **Déconnexion** : Bouton logout dans le header du dashboard
+- [x] **Recherche transactions** : Filtres par type + recherche par client/description
+- [x] **Vérification signature webhook Chargily** : HMAC sha256 via `timingSafeEqual`
+- [x] **Page paiement par salon** : `/gift-card/[slug]` — URL unique par salon
 
 ### Colonnes Supabase — toutes ajoutées ✅
 - [x] `cartes.salon_id`

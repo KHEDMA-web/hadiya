@@ -293,7 +293,14 @@ export default function Dashboard() {
             <div className="flex-1 min-w-0 w-full md:w-auto">
               {!carte ? (
                 <div className="flex flex-col gap-2">
-                  <p className="text-[8px] tracking-[0.28em] uppercase text-[#F7F4EE]/30 font-medium mb-1.5">Scanner RFID</p>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <p className="text-[8px] tracking-[0.28em] uppercase text-[#F7F4EE]/30 font-medium">Scanner RFID</p>
+                    <button
+                      onClick={() => router.push('/scan')}
+                      className="text-[8px] tracking-[0.15em] uppercase text-[#BA7517]/50 hover:text-[#BA7517] transition-colors border border-[#BA7517]/20 hover:border-[#BA7517]/40 rounded-full px-2.5 py-1">
+                      📷 Scanner mobile
+                    </button>
+                  </div>
                   {rfidMode && (
                     <div className="flex items-center gap-2 px-3 py-2 rounded-xl mb-1" style={{ background: 'rgba(186,117,23,0.07)', border: '1px solid rgba(186,117,23,0.18)' }}>
                       <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#BA7517', flexShrink: 0, animation: 'rfid-dot-pulse 1.2s ease-in-out infinite' }} />
