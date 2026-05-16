@@ -1,5 +1,6 @@
 @AGENTS.md
 @SUPABASE.md
+@HADIYA_STATUS.md
 
 # Projet Hadiya
 
