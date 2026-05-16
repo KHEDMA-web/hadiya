@@ -267,13 +267,13 @@ export default function Parametres() {
                     <div className="flex flex-col gap-2">
                       <div className="flex items-center gap-2 bg-[#1E1C18] rounded-xl px-4 py-3 border border-[#3A3830]">
                         <p className="flex-1 text-xs text-[#BA7517] truncate font-mono">
-                          {process.env.NEXT_PUBLIC_URL || 'https://hadiya.app'}/gift-card/{salon.slug}
+                          {typeof window !== 'undefined' ? window.location.origin : (process.env.NEXT_PUBLIC_URL || '')}/gift-card/{salon.slug}
                         </p>
                       </div>
                       <button
                         type="button"
                         onClick={() => {
-                          navigator.clipboard.writeText(`${process.env.NEXT_PUBLIC_URL || 'https://hadiya.app'}/gift-card/${salon.slug}`)
+                          navigator.clipboard.writeText(`${window.location.origin}/gift-card/${salon.slug}`)
                           setCopied(true)
                           setTimeout(() => setCopied(false), 2000)
                         }}

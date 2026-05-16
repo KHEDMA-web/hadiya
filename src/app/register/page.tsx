@@ -32,6 +32,10 @@ export default function RegisterPage() {
   const [error, setError] = useState('')
   const router = useRouter()
 
+  const toSlug = (s: string) =>
+    s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+      .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+
   const handleRegister = async () => {
     if (!nom || !email || !password) { setError('Nom, email et mot de passe requis'); return }
     if (password.length < 6) { setError('Mot de passe minimum 6 caractères'); return }
@@ -41,7 +45,11 @@ export default function RegisterPage() {
     if (authError) { setError(authError.message); setLoading(false); return }
     const userId = authData.user?.id
     if (userId) {
-      await supabase.from('salons').insert({ nom, email, telephone, wilaya, user_id: userId })
+      const baseSlug = toSlug(nom)
+      // Si le slug existe déjà, ajouter un suffixe aléatoire
+      const { data: existing } = await supabase.from('salons').select('id').eq('slug', baseSlug).maybeSingle()
+      const slug = existing ? `${baseSlug}-${Math.random().toString(36).slice(2, 6)}` : baseSlug
+      await supabase.from('salons').insert({ nom, email, telephone, wilaya, owner_id: userId, slug })
     }
     router.push('/dashboard')
   }
