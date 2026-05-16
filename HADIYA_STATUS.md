@@ -1,5 +1,5 @@
 # HADIYA — STATUS COMPLET DU PROJET
-> Dernière mise à jour : 2026-05-16 — v4 (isolation multi-salon complète)
+> Dernière mise à jour : 2026-05-16 — v5 (isolation multi-salon + sécurité paramètres)
 
 ---
 
@@ -448,23 +448,21 @@ N8N_WEBHOOK_URL=https://n8n.domain.com/webhook/xxx   # optionnel
 > **Workflow :** Au début de chaque session, Claude lit cette section et demande ce qui est fait. Tu coches, il met à jour et on continue.
 
 ### Sprint actuel — À faire
-- [x] **Impression reçu caisse** — ticket thermique (80mm) après paiement, bouton 🖨 + `window.print()` + CSS `@media print`
-- [x] **SQL backlog complet** — `transactions/notifications/employes.salon_id`, `salons.logo_url`, index sur salon_id
+- [ ] **Logo salon** — upload image dans Paramètres → Salon → Supabase Storage bucket `logos` (public) → `salons.logo_url` → affiché sur `/gift-card/[slug]`, dashboard header, `/carte/[uid]`. **Prérequis : créer le bucket `logos` (public) dans Supabase Storage.**
+- [ ] **Passer Chargily en production** — changer `CHARGILY_SECRET_KEY` dans Vercel + URL dans `/api/checkout/route.ts` (en attente des clés Chargily)
+- [ ] **n8n WhatsApp** — ajouter `N8N_WEBHOOK_URL` dans Vercel env + créer workflow n8n (~35$/mois UltraMsg + n8n cloud)
+
+### ✅ Fait cette session (2026-05-16)
+- [x] **Isolation multi-salon** — toutes les pages filtrent par `salon_id` (clients, transactions, cartes, notifications, commandes, produits, statistiques, scanner, nouvelle carte, caisse)
+- [x] **SQL isolation** — `cartes.salon_id` (backfill), `menu_items.salon_id`, `scans.salon_id`
+- [x] **Fix caisse employés** — `getUserProfile()` remplace le lookup email-only (les employés peuvent maintenant utiliser la caisse)
+- [x] **Sécurité Paramètres** — changement mot de passe fonctionnel, sessions actives avec déconnexion globale, confirmation suppression compte
+- [x] **Impression reçu caisse** — ticket thermique (80mm) + CSS `@media print`
 - [x] **Plans d'abonnement** — liste de fonctionnalités par plan + badge "Actuel"
 - [x] **Avantages fidélité par niveau** — config Bronze/Argent/Or/Platine dans Paramètres + carte client dynamique
-- [x] **Page scanner** — historique des 6 derniers débits (auto-refresh)
-- [x] **Page statistiques** — export CSV de la période sélectionnée (bouton ↓ CSV)
-- [x] **Page produits** — import en masse : coller Nom, Prix, Emoji, Catégorie → prévisualisation → import
-- [ ] **Passer Chargily en production** — changer `CHARGILY_SECRET_KEY` dans Vercel + URL dans `/api/checkout/route.ts` (en attente des clés Chargily)
-- [x] **SQL Supabase** — exécuter : `ALTER TABLE clients ADD COLUMN IF NOT EXISTS salon_id uuid REFERENCES salons(id);` et `ALTER TABLE salons ADD COLUMN IF NOT EXISTS slug text UNIQUE;` + `avantages_fidelite jsonb`
-
-### ✅ Fait récemment
-- [x] **Plans d'abonnement** — liste de fonctionnalités par plan (parametres Abonnement)
-- [x] **Avantages fidélité par niveau** — config par salon dans onglet Fidélité + carte client dynamique
 - [x] **Scanner** — historique des 6 derniers débits auto-rafraîchi
 - [x] **Statistiques** — export CSV période sélectionnée (BOM UTF-8 pour Excel)
 - [x] **Produits** — import en masse (coller liste → prévisualiser → importer)
-- [x] **SQL Supabase** — `clients.salon_id`, `salons.slug`, `salons.avantages_fidelite`
 - [x] Page paiement unique par salon `/gift-card/[slug]`
 - [x] Sécurité webhook HMAC sha256 (Chargily)
 - [x] `salon_id` transmis dans checkout + webhook
@@ -483,7 +481,7 @@ N8N_WEBHOOK_URL=https://n8n.domain.com/webhook/xxx   # optionnel
 - [ ] **Passage en production Chargily** : Changer `CHARGILY_SECRET_KEY` dans Vercel + URL `pay.chargily.net/test/api/v2/` → `pay.chargily.net/api/v2/` dans `/api/checkout/route.ts` — en attente des vraies clés
 - [ ] **Envoi WhatsApp / Email** : Dépend de n8n (`N8N_WEBHOOK_URL`) — voir section n8n ci-dessous
 - [x] **Isolation multi-salon** : ✅ Toutes les pages dashboard filtrent par `salon_id` — clients, transactions, notifications, cartes, commandes, produits, statistiques, scanner, nouvelle carte. SQL à exécuter (voir Colonnes Supabase ci-dessous).
-- [ ] **Logo salon** : Colonne `logo_url` existe mais pas d'UI d'upload (Supabase Storage)
+- [ ] **Logo salon** : Upload dans Paramètres → Supabase Storage bucket `logos` (public) → affiché sur `/gift-card/[slug]`, dashboard, `/carte/[uid]`. Prérequis : créer le bucket `logos` public dans Supabase Storage.
 - [ ] **Mode offline complet** : Le SW met en cache le shell mais les données Supabase ne sont pas cachées offline.
 
 ### n8n — Configuration requise
