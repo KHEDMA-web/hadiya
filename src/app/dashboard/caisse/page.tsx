@@ -19,7 +19,10 @@ export default function Caisse() {
   const [errPay, setErrPay] = useState('')
   const [rfidMode, setRfidMode] = useState(false)
   const [nfcSupported, setNfcSupported] = useState(false)
-  const [nfcReading, setNfcReading] = useState(false)
+  const [nfcReading, setNfcReading]   = useState(false)
+  const [salonId, setSalonId]         = useState<string | null>(null)
+  const [salonNom, setSalonNom]       = useState('')
+  const [ptsGagnes, setPtsGagnes]     = useState(0)
 
   const uidRef = useRef<HTMLInputElement>(null)
   const confirmRef = useRef<HTMLButtonElement>(null)
@@ -67,6 +70,18 @@ export default function Caisse() {
   useEffect(() => {
     if ('NDEFReader' in window) setNfcSupported(true)
   }, [])
+
+  useEffect(() => {
+    const load = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.user?.email) return
+      const { data } = await supabase.from('salons').select('id, nom').eq('email', session.user.email).single()
+      if (data) { setSalonId(data.id); setSalonNom(data.nom) }
+    }
+    load()
+  }, [])
+
+  const printReceipt = () => window.print()
 
   const startNFC = async () => {
     if (!('NDEFReader' in window)) return
@@ -131,6 +146,7 @@ export default function Caisse() {
     if (!carte || carte.solde < total) return
     setLoading(true)
     const pts = Math.round(total / 100 * 1.5)
+    setPtsGagnes(pts)
     await supabase.from('cartes').update({
       solde: carte.solde - total,
       points: carte.points + pts,
@@ -138,6 +154,7 @@ export default function Caisse() {
     await supabase.from('transactions').insert({
       carte_id: carte.id, type: 'debit',
       montant: total, points_gagnes: pts, description: 'Caisse POS',
+      ...(salonId ? { salon_id: salonId } : {}),
     })
     setStep('done')
     setLoading(false)
@@ -178,6 +195,56 @@ export default function Caisse() {
   // ── Écran done ──
   if (step === 'done') return (
     <div className="min-h-screen bg-[#2C2A25] flex items-center justify-center p-6">
+      <style>{`
+        @media print {
+          * { visibility: hidden !important; }
+          #hd-receipt, #hd-receipt * { visibility: visible !important; }
+          #hd-receipt {
+            position: fixed !important; left: 0 !important; top: 0 !important;
+            width: 100% !important; background: white !important;
+            padding: 28px 20px !important; font-family: 'Courier New', monospace !important;
+            color: #000 !important; font-size: 12px !important; line-height: 1.7 !important;
+            box-sizing: border-box !important;
+          }
+        }
+      `}</style>
+
+      {/* Reçu caché — affiché uniquement à l'impression */}
+      <div id="hd-receipt" style={{ position: 'fixed', left: '-9999px', top: 0, width: '80mm', background: 'white', color: '#000', fontFamily: "'Courier New', monospace", fontSize: 12, lineHeight: 1.7, padding: '24px 16px' }}>
+        <p style={{ textAlign: 'center', fontWeight: 'bold', fontSize: 15, margin: '0 0 2px' }}>{salonNom || 'Hadiya'}</p>
+        <p style={{ textAlign: 'center', fontSize: 11, margin: '0 0 12px', color: '#555' }}>Reçu de caisse</p>
+        <p style={{ borderTop: '1px dashed #000', borderBottom: '1px dashed #000', padding: '5px 0', margin: '0 0 10px', fontSize: 11 }}>
+          {new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
+          {' à '}
+          {new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+        </p>
+        {carte && (
+          <p style={{ margin: '0 0 10px', fontSize: 12 }}>
+            Client : <strong>{carte.clients?.prenom} {carte.clients?.nom}</strong>
+          </p>
+        )}
+        <div style={{ margin: '0 0 8px' }}>
+          {Object.values(order).map(item => (
+            <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', margin: '3px 0' }}>
+              <span>{item.emoji} {item.nom} ×{item.qty}</span>
+              <span style={{ flexShrink: 0, marginLeft: 8 }}>{(item.prix * item.qty).toLocaleString('fr-FR')} DA</span>
+            </div>
+          ))}
+        </div>
+        <div style={{ borderTop: '1px dashed #000', paddingTop: 8, marginBottom: 8 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: 14 }}>
+            <span>TOTAL</span>
+            <span>{total.toLocaleString('fr-FR')} DA</span>
+          </div>
+        </div>
+        <div style={{ borderTop: '1px dashed #000', paddingTop: 6, fontSize: 11 }}>
+          <p style={{ margin: '2px 0' }}>Points gagnés : +{ptsGagnes} pts</p>
+          {carte && <p style={{ margin: '2px 0' }}>Nouveau solde : {(carte.solde - total).toLocaleString('fr-FR')} DA</p>}
+        </div>
+        <p style={{ textAlign: 'center', marginTop: 16, fontSize: 10, borderTop: '1px dashed #000', paddingTop: 10 }}>Merci de votre visite !</p>
+        <p style={{ textAlign: 'center', fontSize: 10 }}>Propulsé par Hadiya</p>
+      </div>
+
       <div className="bg-[#3A3830] border border-[#4A4840] rounded-3xl p-8 text-center w-full max-w-sm shadow-2xl">
         <div className="w-20 h-20 rounded-full bg-[#BA7517]/15 border border-[#BA7517]/40 flex items-center justify-center mx-auto mb-6">
           <span className="text-3xl text-[#BA7517]">✓</span>
@@ -193,11 +260,18 @@ export default function Caisse() {
             <p className="text-base font-medium text-[#F7F4EE]">{(carte.solde - total).toLocaleString('fr-FR')} <span className="text-xs text-[#8A8275]">DA</span></p>
           </div>
         </div>
-        <button onClick={reset}
-          className="w-full mt-7 bg-[#BA7517] text-white rounded-2xl py-4 text-xs tracking-[0.2em] uppercase font-medium hover:bg-[#A36714] transition-colors"
-          style={{ minHeight: 52 }}>
-          Nouvelle commande
-        </button>
+        <div className="flex flex-col gap-3 mt-7">
+          <button onClick={printReceipt}
+            className="w-full bg-[#3A3830] border border-[#4A4840] text-[#8A8275] rounded-2xl py-3.5 text-xs tracking-[0.2em] uppercase font-medium hover:text-[#F7F4EE] hover:border-[#5A5850] transition-colors"
+            style={{ minHeight: 48 }}>
+            🖨 Imprimer le reçu
+          </button>
+          <button onClick={reset}
+            className="w-full bg-[#BA7517] text-white rounded-2xl py-4 text-xs tracking-[0.2em] uppercase font-medium hover:bg-[#A36714] transition-colors"
+            style={{ minHeight: 52 }}>
+            Nouvelle commande
+          </button>
+        </div>
       </div>
     </div>
   )

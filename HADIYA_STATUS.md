@@ -448,6 +448,8 @@ N8N_WEBHOOK_URL=https://n8n.domain.com/webhook/xxx   # optionnel
 > **Workflow :** Au début de chaque session, Claude lit cette section et demande ce qui est fait. Tu coches, il met à jour et on continue.
 
 ### Sprint actuel — À faire
+- [x] **Impression reçu caisse** — ticket thermique (80mm) après paiement, bouton 🖨 + `window.print()` + CSS `@media print`
+- [x] **SQL backlog complet** — `transactions/notifications/employes.salon_id`, `salons.logo_url`, index sur salon_id
 - [x] **Plans d'abonnement** — liste de fonctionnalités par plan + badge "Actuel"
 - [x] **Avantages fidélité par niveau** — config Bronze/Argent/Or/Platine dans Paramètres + carte client dynamique
 - [x] **Page scanner** — historique des 6 derniers débits (auto-refresh)
@@ -497,6 +499,10 @@ N8N_WEBHOOK_URL=https://n8n.domain.com/webhook/xxx   # optionnel
 - [x] `clients.salon_id` → ajoutée ✅
 - [x] `salons.slug` → ajoutée ✅
 - [x] `salons.avantages_fidelite` → ajoutée ✅
+- [x] `transactions.salon_id` → ajoutée ✅ + index
+- [x] `notifications.salon_id` → ajoutée ✅ + index
+- [x] `employes.salon_id` → ajoutée ✅
+- [x] `salons.logo_url` → ajoutée ✅
 - [ ] `transactions.salon_id` → filtrage par salon
 - [ ] `notifications.salon_id` → isoler les notifications par salon
 - [ ] `salons.logo_url` → pour personnalisation carte client

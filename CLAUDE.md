@@ -73,8 +73,10 @@ src/
 Colonnes clés :
 - `cartes` : uid_rfid, type(cadeau/fidelite), solde, points, niveau, statut, message_perso, offert_par, date_expiration, source(online/comptoir), first_opened_at
 - `clients` : telephone(lookup unique), niveau, points, allergies, preferences_massage, notes_praticien, salon_id
-- `employes` : permissions(jsonb), actif, role(caissier/receptionniste/manager)
-- `salons` : owner_id, slug(unique), fidelite_actif, points_par_100da, seuil_argent/or/platine, avantages_fidelite(jsonb)
+- `employes` : permissions(jsonb), actif, role(caissier/receptionniste/manager), salon_id
+- `salons` : owner_id, slug(unique), fidelite_actif, points_par_100da, seuil_argent/or/platine, avantages_fidelite(jsonb), logo_url
+- `transactions` : carte_id, type, montant, points_gagnes, description, salon_id
+- `notifications` : type, titre, message, lu, meta, salon_id
 
 ## Auth & Permissions
 - Owner : `salons.owner_id === auth.user.id` → toutes permissions
