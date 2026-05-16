@@ -17,6 +17,7 @@ const NIVEAU_AVATAR: Record<string, string> = {
 export default function Dashboard() {
   const [stats, setStats] = useState({ cartes: 0, clients: 0, transactions: 0 })
   const [salonNom, setSalonNom] = useState('')
+  const [salonLogo, setSalonLogo] = useState<string | null>(null)
   const [scanNotif, setScanNotif] = useState('')
   const [modalCarte, setModalCarte] = useState<any>(null)
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
@@ -92,6 +93,11 @@ export default function Dashboard() {
       const profile = await getUserProfile()
       setUserProfile(profile)
       setSalonNom(profile?.salonNom || session.user.email?.split('@')[0] || 'Salon')
+
+      if (profile?.salonId) {
+        const { data: salonData } = await supabase.from('salons').select('logo_url').eq('id', profile.salonId).single()
+        if (salonData?.logo_url) setSalonLogo(salonData.logo_url)
+      }
 
       const sid = profile?.salonId
       const [{ count: cartes }, { count: clients }, { count: transactions }] = await Promise.all([
@@ -286,8 +292,11 @@ export default function Dashboard() {
             </div>
             <div className="flex flex-col items-center md:items-end gap-1.5">
               <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-lg bg-[#BA7517]/15 border border-[#BA7517]/30 flex items-center justify-center">
-                  <span className="text-[10px] font-semibold text-[#BA7517] uppercase">{salonNom?.[0] || 'S'}</span>
+                <div className="w-7 h-7 rounded-lg bg-[#BA7517]/15 border border-[#BA7517]/30 flex items-center justify-center overflow-hidden">
+                  {salonLogo
+                    ? <img src={salonLogo} alt={salonNom} className="w-full h-full object-cover" />
+                    : <span className="text-[10px] font-semibold text-[#BA7517] uppercase">{salonNom?.[0] || 'S'}</span>
+                  }
                 </div>
                 <div className="flex flex-col items-end">
                   <span className="text-xs font-medium text-[#F7F4EE]/60 max-w-[120px] truncate capitalize">{salonNom}</span>

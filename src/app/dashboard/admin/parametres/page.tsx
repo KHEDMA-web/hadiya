@@ -113,6 +113,7 @@ export default function Parametres() {
   const [passMsg, setPassMsg] = useState<{ ok: boolean; text: string } | null>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [sessionInfo, setSessionInfo] = useState<{ lastSignIn: string } | null>(null)
+  const [logoUploading, setLogoUploading] = useState(false)
 
   useEffect(() => {
     const init = async () => {
@@ -202,6 +203,21 @@ export default function Parametres() {
     router.push('/login')
   }
 
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !salon.id) return
+    setLogoUploading(true)
+    const ext = file.name.split('.').pop() || 'jpg'
+    const path = `${salon.id}.${ext}`
+    const { error: uploadError } = await supabase.storage.from('logos').upload(path, file, { upsert: true })
+    if (!uploadError) {
+      const { data: urlData } = supabase.storage.from('logos').getPublicUrl(path)
+      await supabase.from('salons').update({ logo_url: urlData.publicUrl }).eq('id', salon.id)
+      setSalon(s => ({ ...s, logo_url: urlData.publicUrl }))
+    }
+    setLogoUploading(false)
+  }
+
   const tabs = [
     { id: 'salon',         label: 'Salon',         icon: '⊹' },
     { id: 'fidelite',      label: 'Fidélité',      icon: '✦' },
@@ -260,6 +276,41 @@ export default function Parametres() {
             {/* SALON */}
             {activeSection === 'salon' && (
               <>
+                {/* LOGO */}
+                <div className="bg-white border border-[#C4B89E] rounded-2xl p-6 shadow-md flex flex-col gap-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="w-1 h-5 bg-[#BA7517] rounded-full" />
+                    <p className="text-xs font-semibold text-[#2C2A25] uppercase tracking-wider">Logo du salon</p>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div className="w-16 h-16 rounded-2xl border border-[#C4B89E] overflow-hidden bg-[#F7F4EE] flex items-center justify-center flex-shrink-0">
+                      {salon.logo_url
+                        ? <img src={salon.logo_url} alt="Logo" className="w-full h-full object-cover" />
+                        : <span className="text-2xl font-semibold text-[#BA7517]">{salon.nom?.[0]?.toUpperCase() || '?'}</span>
+                      }
+                    </div>
+                    <div className="flex flex-col gap-2 flex-1">
+                      <p className="text-[11px] text-[#8A8275]">Affiché sur votre page de paiement, la carte client et le dashboard.</p>
+                      <label className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-medium self-start transition-colors ${logoUploading ? 'bg-[#E8E2D5] text-[#8A8275] cursor-not-allowed' : 'bg-[#2C2A25] text-[#F7F4EE] hover:opacity-90 cursor-pointer'}`}>
+                        {logoUploading ? 'Upload...' : salon.logo_url ? 'Changer le logo' : 'Ajouter un logo'}
+                        <input type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} disabled={logoUploading} />
+                      </label>
+                      {salon.logo_url && (
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            await supabase.from('salons').update({ logo_url: null }).eq('id', salon.id!)
+                            setSalon(s => ({ ...s, logo_url: null }))
+                          }}
+                          className="text-[10px] text-rose-400 hover:text-rose-600 transition-colors text-left"
+                        >
+                          Supprimer le logo
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
                 <div className="bg-white border border-[#C4B89E] rounded-2xl p-6 shadow-md flex flex-col gap-4">
                   <div className="flex items-center gap-2 mb-1">
                     <div className="w-1 h-5 bg-[#BA7517] rounded-full" />

@@ -8,6 +8,7 @@ interface SalonInfo {
   id: string;
   nom: string;
   slug: string;
+  logo_url: string | null;
 }
 
 interface FormState {
@@ -43,7 +44,7 @@ export default function GiftCardSalonPage() {
     if (!slug) return;
     supabase
       .from("salons")
-      .select("id, nom, slug")
+      .select("id, nom, slug, logo_url")
       .eq("slug", slug)
       .single()
       .then(({ data }) => {
@@ -137,6 +138,11 @@ export default function GiftCardSalonPage() {
       `}</style>
       <div style={st.root}>
         <div style={st.header}>
+          {salon.logo_url && (
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 18 }}>
+              <img src={salon.logo_url} alt={salon.nom} style={{ width: 72, height: 72, borderRadius: 18, objectFit: 'cover', border: '1px solid rgba(196,146,42,0.35)', boxShadow: '0 4px 16px rgba(0,0,0,0.3)' }} />
+            </div>
+          )}
           <div style={st.headerLines}>
             <span style={st.lineL} />
             <span style={st.brandName}>{salon.nom.toUpperCase()}</span>
@@ -182,7 +188,12 @@ export default function GiftCardSalonPage() {
               {(form.from || form.message) && (
                 <div style={st.previewCard}>
                   <div style={st.previewHeader}>
-                    <span style={st.previewLogo}>{salon.nom[0].toUpperCase()}</span>
+                    <span style={st.previewLogo}>
+                      {salon.logo_url
+                        ? <img src={salon.logo_url} alt={salon.nom} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 8 }} />
+                        : salon.nom[0].toUpperCase()
+                      }
+                    </span>
                     <span style={st.previewBrand}>{salon.nom.toUpperCase()}</span>
                   </div>
                   <p style={st.previewTo}>Pour <strong>{form.firstName || "…"} {form.lastName}</strong></p>
@@ -255,7 +266,12 @@ export default function GiftCardSalonPage() {
             </div>
           )}
         </div>
-        <p style={st.footer}>© {salon.nom} · Carte Cadeau · Paiement sécurisé Chargily Pay</p>
+        <div style={{ textAlign: 'center', marginTop: 32, display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <p style={st.footer}>© {salon.nom} · Carte Cadeau · Paiement sécurisé Chargily Pay</p>
+          <p style={{ fontFamily: "'Jost', sans-serif", fontSize: 9, color: '#3A3830', letterSpacing: '0.2em', textTransform: 'uppercase', margin: 0 }}>
+            Propulsé par <span style={{ color: '#C4922A', fontWeight: 500 }}>HADIYA</span>
+          </p>
+        </div>
       </div>
     </>
   );

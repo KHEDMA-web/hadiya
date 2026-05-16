@@ -32,6 +32,7 @@ export default function CartePage() {
   const [transactions, setTransactions] = useState<any[]>([])
   const [whatsappSalon, setWhatsappSalon] = useState('213555000000')
   const [avantagesSalon, setAvantagesSalon] = useState<Record<string, string> | null>(null)
+  const [logoSalon, setLogoSalon] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [showInstall, setShowInstall] = useState(false)
@@ -74,7 +75,7 @@ export default function CartePage() {
       if (data.salon_id) {
         const { data: salonData } = await supabase
           .from('salons')
-          .select('telephone, whatsapp, avantages_fidelite')
+          .select('telephone, whatsapp, avantages_fidelite, logo_url')
           .eq('id', data.salon_id)
           .single()
 
@@ -87,6 +88,9 @@ export default function CartePage() {
           }
           if (salonData.avantages_fidelite) {
             setAvantagesSalon(salonData.avantages_fidelite)
+          }
+          if (salonData.logo_url) {
+            setLogoSalon(salonData.logo_url)
           }
         }
       }
@@ -221,8 +225,13 @@ export default function CartePage() {
         <div style={{ position: 'relative', zIndex: 1, padding: '40px 28px 36px', maxWidth: 420, margin: '0 auto' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 40 }}>
             <div>
-              <p style={{ fontSize: 9, letterSpacing: '0.45em', textTransform: 'uppercase', color: cfg.text, opacity: 0.5, margin: 0 }}>HADIYA</p>
-              <p style={{ fontSize: 12, letterSpacing: '0.15em', color: cfg.text, opacity: 0.65, margin: '4px 0 0' }}>Carte membre</p>
+              {logoSalon
+                ? <img src={logoSalon} alt="Salon" style={{ width: 40, height: 40, borderRadius: 10, objectFit: 'cover', display: 'block', border: `1px solid ${cfg.accent}44` }} />
+                : <>
+                  <p style={{ fontSize: 9, letterSpacing: '0.45em', textTransform: 'uppercase', color: cfg.text, opacity: 0.5, margin: 0 }}>HADIYA</p>
+                  <p style={{ fontSize: 12, letterSpacing: '0.15em', color: cfg.text, opacity: 0.65, margin: '4px 0 0' }}>Carte membre</p>
+                </>
+              }
             </div>
             <span style={{ fontSize: 9, fontWeight: 600, padding: '6px 14px', borderRadius: 999, letterSpacing: '0.15em', textTransform: 'uppercase', background: cfg.badgeBg, color: cfg.accent, border: `1px solid ${cfg.accent}55` }}>
               {cfg.label}
@@ -347,9 +356,14 @@ export default function CartePage() {
           </div>
         </div>
 
-        <p style={{ textAlign: 'center', fontSize: 9, letterSpacing: '0.3em', color: '#8A8275', textTransform: 'uppercase', paddingTop: 8, opacity: 0.4, margin: 0 }}>
-          Hadiya · Carte digitale
-        </p>
+        <div style={{ textAlign: 'center', paddingTop: 8, paddingBottom: 8 }}>
+          <p style={{ fontSize: 9, letterSpacing: '0.25em', color: '#B0A898', textTransform: 'uppercase', margin: '0 0 4px' }}>
+            Carte propulsée par
+          </p>
+          <p style={{ fontSize: 13, letterSpacing: '0.4em', color: '#BA7517', fontFamily: serif, fontWeight: 300, margin: 0 }}>
+            HADIYA
+          </p>
+        </div>
       </div>
 
       {/* ── QR plein écran ── */}

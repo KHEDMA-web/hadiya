@@ -448,7 +448,7 @@ N8N_WEBHOOK_URL=https://n8n.domain.com/webhook/xxx   # optionnel
 > **Workflow :** Au début de chaque session, Claude lit cette section et demande ce qui est fait. Tu coches, il met à jour et on continue.
 
 ### Sprint actuel — À faire
-- [ ] **Logo salon** — upload image dans Paramètres → Salon → Supabase Storage bucket `logos` (public) → `salons.logo_url` → affiché sur `/gift-card/[slug]`, dashboard header, `/carte/[uid]`. **Prérequis : créer le bucket `logos` (public) dans Supabase Storage.**
+- [x] **Logo salon** — upload dans Paramètres → onglet Salon → bucket `logos` (public) → affiché sur `/gift-card/[slug]`, dashboard header, `/carte/[uid]`
 - [ ] **Passer Chargily en production** — changer `CHARGILY_SECRET_KEY` dans Vercel + URL dans `/api/checkout/route.ts` (en attente des clés Chargily)
 - [ ] **n8n WhatsApp** — ajouter `N8N_WEBHOOK_URL` dans Vercel env + créer workflow n8n (~35$/mois UltraMsg + n8n cloud)
 
@@ -533,18 +533,10 @@ Il suffit d'ajouter `N8N_WEBHOOK_URL` dans Vercel env et de créer le workflow n
 - [x] `notifications.salon_id` + index
 - [x] `employes.salon_id`
 
-**À exécuter dans Supabase SQL Editor ⚠️**
-```sql
--- Isolation multi-salon (isolation code déjà fait)
-ALTER TABLE cartes ADD COLUMN IF NOT EXISTS salon_id uuid REFERENCES salons(id);
-UPDATE cartes SET salon_id = clients.salon_id
-FROM clients WHERE cartes.client_id = clients.id AND clients.salon_id IS NOT NULL;
-
-ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS salon_id uuid REFERENCES salons(id);
-UPDATE menu_items SET salon_id = (SELECT id FROM salons LIMIT 1) WHERE salon_id IS NULL;
-
-ALTER TABLE scans ADD COLUMN IF NOT EXISTS salon_id uuid REFERENCES salons(id);
-```
+**Déjà exécuté ✅**
+- [x] `cartes.salon_id` (backfill depuis `clients.salon_id`)
+- [x] `menu_items.salon_id` (assigné au premier salon)
+- [x] `scans.salon_id`
 
 ---
 
