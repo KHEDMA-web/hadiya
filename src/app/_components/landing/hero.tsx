@@ -28,9 +28,8 @@ export default function LandingHero({ onCTA }: LandingHeroProps) {
   }, [])
 
   return (
-    <section ref={ref as React.RefObject<HTMLDivElement>} style={{
+    <section ref={ref as React.RefObject<HTMLDivElement>} className="hd-hero" style={{
       position: 'relative', background: '#F7F4EE', overflow: 'hidden',
-      padding: '120px 40px 80px',
     }}>
       <div style={{
         position: 'absolute', top: '20%', left: '50%', transform: 'translate(-50%, -50%)',
@@ -39,7 +38,7 @@ export default function LandingHero({ onCTA }: LandingHeroProps) {
         pointerEvents: 'none',
       }}/>
 
-      <div style={{ maxWidth: 1280, margin: '0 auto', position: 'relative', display: 'grid', gridTemplateColumns: '1.15fr 1fr', gap: 80, alignItems: 'center' }}>
+      <div className="hd-hero-grid" style={{ maxWidth: 1280, margin: '0 auto', position: 'relative' }}>
 
         {/* Left: copy */}
         <div>
@@ -75,8 +74,7 @@ export default function LandingHero({ onCTA }: LandingHeroProps) {
             Une plateforme posée et complète pour les salons qui ont compris qu&apos;un client qui revient vaut dix nouveaux. Caisse, cartes cadeaux, réservations — tout retient autour de la fidélité.
           </p>
 
-          <div style={{
-            marginTop: 40, display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap',
+          <div className="hd-hero-cta-row" style={{
             opacity: visible ? 1 : 0, transform: visible ? 'translateY(0)' : 'translateY(20px)',
             transition: 'all 1s cubic-bezier(0.16,1,0.3,1) 450ms',
           }}>
@@ -114,9 +112,9 @@ export default function LandingHero({ onCTA }: LandingHeroProps) {
         </div>
 
         {/* Right: floating phone */}
-        <div style={{ position: 'relative', height: 620, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+        <div className="hd-hero-phone-wrap">
           <Parallax speed={0.10}>
-            <div style={{
+            <div className="hd-hero-card-backdrop" style={{
               position: 'absolute', top: 60, left: 30, width: 220, height: 140,
               background: 'linear-gradient(135deg, #BA7517 0%, #8a560f 100%)',
               borderRadius: 18, boxShadow: '0 30px 60px -15px rgba(186,117,23,0.4)',

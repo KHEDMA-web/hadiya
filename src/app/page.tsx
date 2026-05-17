@@ -15,10 +15,11 @@ export default function Home() {
     <div style={{ background: '#F7F4EE' }}>
       <NavBar onCTA={handleCTA}/>
       <LandingHero onCTA={handleCTA}/>
+      <div id="demo-anchor"/>
       <FeatureShowcase/>
-      <PaiementLocal/>
       <RealtimeSync/>
       <Differentiators/>
+      <PaiementLocal/>
       <CallToAction onCTA={handleCTA}/>
       <Footer/>
     </div>

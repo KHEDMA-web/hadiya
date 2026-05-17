@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
-import { useReveal, BrowserFrame, Cursor, Icon, useDemoPhases } from './shared'
+import { useReveal, BrowserFrame, ScaledFrame, Cursor, Icon, useDemoPhases } from './shared'
 
 const FEATURES = [
   { id: 'fidelite',    label: 'Fidélité',          short: 'Programme 4 niveaux',        desc: "Un programme sur-mesure : 4 niveaux, seuils ajustables, avantages configurables. Chaque scan compte, chaque client revient.", icon: 'star' as const },
@@ -30,9 +30,9 @@ export default function FeatureShowcase() {
   const current = FEATURES.find(f => f.id === active)!
 
   return (
-    <section id="fonctionnalites" ref={ref as React.RefObject<HTMLDivElement>} style={{
+    <section id="fonctionnalites" ref={ref as React.RefObject<HTMLDivElement>} className="hd-section" style={{
       background: 'linear-gradient(180deg, #F7F4EE 0%, #EFEADC 100%)',
-      padding: '120px 40px', position: 'relative',
+      position: 'relative',
     }}>
       <div style={{ maxWidth: 1280, margin: '0 auto' }}>
         <div style={{ textAlign: 'center', marginBottom: 64 }}>
@@ -53,13 +53,13 @@ export default function FeatureShowcase() {
           </p>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: 48, alignItems: 'flex-start' }}>
+        <div className="hd-feat-grid">
           {/* Tabs */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, position: 'sticky', top: 40 }}>
+          <div className="hd-feat-tabs">
             {FEATURES.map((f) => {
               const isActive = active === f.id
               return (
-                <button key={f.id} onClick={() => setActive(f.id)} style={{
+                <button key={f.id} onClick={() => setActive(f.id)} className="hd-feat-tab" style={{
                   textAlign: 'left', padding: '18px 20px', borderRadius: 14,
                   border: isActive ? '1px solid rgba(186,117,23,0.4)' : '1px solid transparent',
                   background: isActive ? 'rgba(186,117,23,0.06)' : 'transparent',
@@ -89,14 +89,16 @@ export default function FeatureShowcase() {
 
           {/* Stage */}
           <div>
-            <BrowserFrame width="100%" height={500} url={`hadiya.app/dashboard/${active}`} style={{ maxWidth: 880 }}>
-              {active === 'fidelite'     && <DemoFidelite/>}
-              {active === 'caisse'       && <DemoCaisse/>}
-              {active === 'cadeaux'      && <DemoCadeaux/>}
-              {active === 'reservations' && <DemoReservations/>}
-              {active === 'catalogue'    && <DemoCatalogue/>}
-              {active === 'stats'        && <DemoStats/>}
-            </BrowserFrame>
+            <ScaledFrame baseWidth={720} baseHeight={500}>
+              <BrowserFrame width={720} height={500} url={`hadiya.app/dashboard/${active}`}>
+                {active === 'fidelite'     && <DemoFidelite/>}
+                {active === 'caisse'       && <DemoCaisse/>}
+                {active === 'cadeaux'      && <DemoCadeaux/>}
+                {active === 'reservations' && <DemoReservations/>}
+                {active === 'catalogue'    && <DemoCatalogue/>}
+                {active === 'stats'        && <DemoStats/>}
+              </BrowserFrame>
+            </ScaledFrame>
             <div style={{ marginTop: 28, padding: '0 12px', maxWidth: 880 }}>
               <p style={{
                 fontFamily: 'var(--font-geist-sans)', fontSize: 14, lineHeight: 1.7,

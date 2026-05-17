@@ -2,20 +2,31 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { useReveal, Icon } from './shared'
+import { useReveal, useMedia, Icon } from './shared'
 
 // ── NavBar ────────────────────────────────────────────────────
 interface NavBarProps { onCTA: () => void }
 
 export function NavBar({ onCTA }: NavBarProps) {
   const [scrolled, setScrolled] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const isMobile = useMedia('(max-width: 640px)')
+
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 30)
     window.addEventListener('scroll', onScroll, { passive: true })
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
+  useEffect(() => { if (!isMobile) setMenuOpen(false) }, [isMobile])
+
+  useEffect(() => {
+    document.body.style.overflow = menuOpen ? 'hidden' : ''
+    return () => { document.body.style.overflow = '' }
+  }, [menuOpen])
+
   const jumpToFeature = (featureId: string) => {
+    setMenuOpen(false)
     window.dispatchEvent(new CustomEvent('hadiya:setFeature', { detail: featureId }))
     requestAnimationFrame(() => {
       document.getElementById('fonctionnalites')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -29,38 +40,102 @@ export function NavBar({ onCTA }: NavBarProps) {
   ]
 
   return (
-    <nav style={{
-      position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100,
-      padding: scrolled ? '14px 40px' : '22px 40px',
-      background: scrolled ? 'rgba(247,244,238,0.88)' : 'transparent',
-      backdropFilter: scrolled ? 'blur(20px)' : 'none',
-      borderBottom: scrolled ? '1px solid rgba(196,184,158,0.3)' : '1px solid transparent',
-      transition: 'all 0.3s cubic-bezier(0.16,1,0.3,1)',
-      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-    }}>
-      <p style={{ fontFamily: 'var(--font-cormorant)', fontSize: 26, color: '#2C2A25', margin: 0, fontWeight: 400, letterSpacing: '-0.01em' }}>
-        Hadiya<span style={{ color: '#BA7517' }}>.</span>
-      </p>
-      <div style={{ display: 'flex', gap: 32, alignItems: 'center' }}>
-        {navLinks.map(l => (
-          <button key={l.label} onClick={() => jumpToFeature(l.feature)} style={{
-            fontSize: 10, letterSpacing: '0.22em', textTransform: 'uppercase', fontWeight: 500,
-            color: '#2C2A25', background: 'transparent', border: 'none', cursor: 'pointer',
-            opacity: 0.7, transition: 'opacity 0.2s', fontFamily: 'var(--font-geist-sans)', padding: 0,
-          }}
-          onMouseEnter={e => (e.currentTarget.style.opacity = '1')}
-          onMouseLeave={e => (e.currentTarget.style.opacity = '0.7')}
-          >{l.label}</button>
-        ))}
-        <Link href="/login" style={{
-          fontSize: 10, letterSpacing: '0.22em', textTransform: 'uppercase', fontWeight: 500,
-          color: '#2C2A25', textDecoration: 'none', opacity: 0.7, transition: 'opacity 0.2s',
-        }}>Se connecter</Link>
-        <button onClick={onCTA} className="hd-btn-gold" style={{ padding: '12px 22px', fontSize: 9 }}>
-          Voir la démo
-        </button>
-      </div>
-    </nav>
+    <>
+      <nav style={{
+        position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100,
+        paddingTop: `max(${scrolled ? 14 : 22}px, env(safe-area-inset-top))`,
+        paddingBottom: scrolled ? 14 : 22,
+        paddingLeft: `max(${isMobile ? 16 : 40}px, env(safe-area-inset-left))`,
+        paddingRight: `max(${isMobile ? 16 : 40}px, env(safe-area-inset-right))`,
+        background: scrolled ? 'rgba(247,244,238,0.88)' : 'transparent',
+        backdropFilter: scrolled ? 'blur(20px)' : 'none',
+        borderBottom: scrolled ? '1px solid rgba(196,184,158,0.3)' : '1px solid transparent',
+        transition: 'all 0.3s cubic-bezier(0.16,1,0.3,1)',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      }}>
+        <p style={{ fontFamily: 'var(--font-cormorant)', fontSize: 26, color: '#2C2A25', margin: 0, fontWeight: 400, letterSpacing: '-0.01em' }}>
+          Hadiya<span style={{ color: '#BA7517' }}>.</span>
+        </p>
+
+        {/* Desktop links */}
+        {!isMobile && (
+          <div style={{ display: 'flex', gap: 32, alignItems: 'center' }}>
+            {navLinks.map(l => (
+              <button key={l.label} onClick={() => jumpToFeature(l.feature)} style={{
+                fontSize: 10, letterSpacing: '0.22em', textTransform: 'uppercase', fontWeight: 500,
+                color: '#2C2A25', background: 'transparent', border: 'none', cursor: 'pointer',
+                opacity: 0.7, transition: 'opacity 0.2s', fontFamily: 'var(--font-geist-sans)', padding: 0,
+              }}
+              onMouseEnter={e => (e.currentTarget.style.opacity = '1')}
+              onMouseLeave={e => (e.currentTarget.style.opacity = '0.7')}
+              >{l.label}</button>
+            ))}
+            <Link href="/login" style={{
+              fontSize: 10, letterSpacing: '0.22em', textTransform: 'uppercase', fontWeight: 500,
+              color: '#2C2A25', textDecoration: 'none', opacity: 0.7, transition: 'opacity 0.2s',
+            }}>Se connecter</Link>
+            <button onClick={onCTA} className="hd-btn-gold" style={{ padding: '12px 22px', fontSize: 9 }}>
+              Voir la démo
+            </button>
+          </div>
+        )}
+
+        {/* Mobile burger */}
+        {isMobile && (
+          <button onClick={() => setMenuOpen(o => !o)} style={{
+            width: 38, height: 38, borderRadius: 10,
+            background: menuOpen ? 'rgba(186,117,23,0.1)' : 'transparent',
+            border: '1px solid rgba(44,42,37,0.15)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            cursor: 'pointer', transition: 'all 0.2s', padding: 0,
+          }}>
+            {menuOpen ? (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2C2A25" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            ) : (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2C2A25" strokeWidth="2" strokeLinecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+            )}
+          </button>
+        )}
+      </nav>
+
+      {/* Mobile drawer */}
+      {menuOpen && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 99,
+          background: '#F7F4EE',
+          display: 'flex', flexDirection: 'column',
+          paddingTop: 'max(80px, env(safe-area-inset-top))',
+          paddingBottom: 'max(32px, env(safe-area-inset-bottom))',
+          paddingLeft: 'max(24px, env(safe-area-inset-left))',
+          paddingRight: 'max(24px, env(safe-area-inset-right))',
+          animation: 'hd-slideUp 0.35s cubic-bezier(0.16,1,0.3,1)',
+        }}>
+          <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+            {navLinks.map(l => (
+              <button key={l.label} onClick={() => jumpToFeature(l.feature)} style={{
+                textAlign: 'left', padding: '16px 0',
+                fontFamily: 'var(--font-cormorant)', fontSize: 42, fontWeight: 300,
+                color: '#2C2A25', background: 'none', border: 'none',
+                borderBottom: '1px solid rgba(196,184,158,0.25)',
+                cursor: 'pointer', lineHeight: 1.1,
+              }}>{l.label}</button>
+            ))}
+            <Link href="/login" onClick={() => setMenuOpen(false)} style={{
+              textAlign: 'left', padding: '16px 0',
+              fontFamily: 'var(--font-cormorant)', fontSize: 42, fontWeight: 300,
+              color: '#2C2A25', textDecoration: 'none', display: 'block',
+              borderBottom: '1px solid rgba(196,184,158,0.25)', lineHeight: 1.1,
+            }}>Se connecter</Link>
+          </div>
+          <button onClick={() => { setMenuOpen(false); onCTA() }} className="hd-btn-gold" style={{
+            width: '100%', padding: '18px 0', fontSize: 10, marginTop: 32,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12,
+          }}>
+            Voir la démo en ligne {Icon.arrow(14)}
+          </button>
+        </div>
+      )}
+    </>
   )
 }
 
@@ -68,7 +143,7 @@ export function NavBar({ onCTA }: NavBarProps) {
 export function Differentiators() {
   const [ref, visible] = useReveal()
   return (
-    <section ref={ref as React.RefObject<HTMLDivElement>} style={{ background: '#F7F4EE', padding: '120px 40px', position: 'relative' }}>
+    <section ref={ref as React.RefObject<HTMLDivElement>} className="hd-section" style={{ background: '#F7F4EE', position: 'relative' }}>
       <div style={{ maxWidth: 1280, margin: '0 auto' }}>
         <div style={{ textAlign: 'center', marginBottom: 80 }}>
           <p style={{ fontSize: 10, letterSpacing: '0.32em', textTransform: 'uppercase', color: '#BA7517', fontWeight: 600, margin: 0 }}>Ce qui fait la différence</p>
@@ -80,7 +155,7 @@ export function Differentiators() {
             Trois choses que <span style={{ fontStyle: 'italic', color: '#BA7517' }}>personne d&apos;autre</span> ne fait comme nous.
           </h2>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 28 }}>
+        <div className="hd-diff-grid">
           <DiffCard visible={visible} delay={0}   kicker="01 — Carte cadeau" title="Brandée par salon."         body="Chaque salon a sa propre page de paiement, à son logo, son nom, ses couleurs. Vendre une carte cadeau devient un acte de marque, pas une transaction anonyme." preview={<MiniGiftPreview/>}/>
           <DiffCard visible={visible} delay={120} kicker="02 — NFC / RFID"   title="Cartes physiques. Vrai."   body="Carte plastique, bracelet, porte-clé. Approche, scan, débit. Pour les habituées qui veulent leur carte au comptoir comme à la salle de sport." preview={<MiniNFCPreview/>}/>
           <DiffCard visible={visible} delay={240} kicker="03 — Fidélité"     title="Quatre niveaux à votre image." body="Bronze, Argent, Or, Platine. Seuils, points par 100 DA, avantages par niveau — tout est configurable par salon. Votre programme, vos règles." preview={<MiniLevelsPreview/>}/>
@@ -101,7 +176,7 @@ function DiffCard({ kicker, title, body, preview, visible, delay = 0 }: {
       opacity: visible ? 1 : 0, transform: visible ? 'translateY(0)' : 'translateY(40px)',
       display: 'flex', flexDirection: 'column', gap: 20,
     }}>
-      <div style={{ height: 200, borderRadius: 14, background: '#2C2A25', overflow: 'hidden', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div className="hd-diff-preview" style={{ borderRadius: 14, background: '#2C2A25', overflow: 'hidden', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         {preview}
       </div>
       <div>
@@ -201,7 +276,7 @@ interface CTAProps { onCTA: () => void }
 export function CallToAction({ onCTA }: CTAProps) {
   const [ref, visible] = useReveal()
   return (
-    <section ref={ref as React.RefObject<HTMLDivElement>} style={{ background: '#2C2A25', padding: '120px 40px', position: 'relative', overflow: 'hidden' }}>
+    <section ref={ref as React.RefObject<HTMLDivElement>} className="hd-section" style={{ background: '#2C2A25', position: 'relative', overflow: 'hidden' }}>
       <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: 800, height: 600, background: 'radial-gradient(ellipse at center, rgba(186,117,23,0.20) 0%, transparent 60%)', pointerEvents: 'none' }}/>
       <div style={{
         maxWidth: 900, margin: '0 auto', textAlign: 'center', position: 'relative',
@@ -235,9 +310,10 @@ export function CallToAction({ onCTA }: CTAProps) {
 // ── Footer ────────────────────────────────────────────────────
 export function Footer() {
   return (
-    <footer style={{ background: '#1E1C18', padding: '60px 40px 40px', borderTop: '1px solid rgba(186,117,23,0.15)' }}>
-      <div style={{ maxWidth: 1280, margin: '0 auto', display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', gap: 48 }}>
-        <div>
+    <footer className="hd-footer" style={{ background: '#1E1C18', borderTop: '1px solid rgba(186,117,23,0.15)' }}>
+      <div style={{ maxWidth: 1280, margin: '0 auto' }}>
+      <div className="hd-footer-grid">
+        <div className="hd-footer-brand">
           <p style={{ fontFamily: 'var(--font-cormorant)', fontSize: 28, color: '#F7F4EE', margin: 0, fontWeight: 300, letterSpacing: '-0.01em' }}>
             Hadiya<span style={{ color: '#BA7517' }}>.</span>
           </p>
@@ -249,13 +325,13 @@ export function Footer() {
         <FooterCol title="Société"  links={['Démo', 'Contact', 'WhatsApp', 'À propos']}/>
         <FooterCol title="Légal"    links={['Confidentialité', 'CGU', 'RGPD']}/>
       </div>
-      <div style={{
-        maxWidth: 1280, margin: '48px auto 0', paddingTop: 28,
+      <div className="hd-footer-bottom" style={{
+        marginTop: 48, paddingTop: 28,
         borderTop: '1px solid rgba(247,244,238,0.06)',
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 14,
       }}>
         <span style={{ fontSize: 10, letterSpacing: '0.22em', color: 'rgba(247,244,238,0.3)', textTransform: 'uppercase' }}>© 2026 Hadiya · Fait en Algérie 🇩🇿</span>
         <span style={{ fontSize: 10, letterSpacing: '0.22em', color: 'rgba(186,117,23,0.5)', textTransform: 'uppercase' }}>L&apos;art de fidéliser</span>
+      </div>
       </div>
     </footer>
   )

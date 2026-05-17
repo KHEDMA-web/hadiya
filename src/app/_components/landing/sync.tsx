@@ -7,9 +7,9 @@ export default function RealtimeSync() {
   const phase = useDemoPhases(5, [1600, 1200, 1800, 2200, 1500])
 
   return (
-    <section ref={ref as React.RefObject<HTMLDivElement>} style={{
+    <section ref={ref as React.RefObject<HTMLDivElement>} className="hd-section" style={{
       background: 'linear-gradient(180deg, #EFEADC 0%, #F7F4EE 100%)',
-      padding: '120px 40px', position: 'relative', overflow: 'hidden',
+      position: 'relative', overflow: 'hidden',
     }}>
       <div style={{ maxWidth: 1280, margin: '0 auto', position: 'relative' }}>
         <div style={{ textAlign: 'center', marginBottom: 56 }}>
@@ -35,21 +35,17 @@ export default function RealtimeSync() {
           </p>
         </div>
 
-        <div style={{
-          position: 'relative',
-          display: 'grid', gridTemplateColumns: '300px 1fr 580px',
-          gap: 0, alignItems: 'center', justifyContent: 'center', minHeight: 460,
-        }}>
+        <div className="hd-sync-grid">
           <div style={{
             opacity: visible ? 1 : 0, transform: visible ? 'translateX(0)' : 'translateX(-30px)',
             transition: 'all 1s cubic-bezier(0.16,1,0.3,1) 200ms', display: 'flex', justifyContent: 'center',
           }}>
             <ScannerPhone phase={phase}/>
           </div>
-          <div style={{ position: 'relative', height: 460, display: 'flex', alignItems: 'center' }}>
+          <div className="hd-sync-arc-wrap">
             <SyncArc phase={phase} active={visible}/>
           </div>
-          <div style={{
+          <div className="hd-sync-dashboard" style={{
             opacity: visible ? 1 : 0, transform: visible ? 'translateX(0)' : 'translateX(30px)',
             transition: 'all 1s cubic-bezier(0.16,1,0.3,1) 200ms',
           }}>

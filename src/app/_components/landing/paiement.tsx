@@ -6,8 +6,8 @@ export default function PaiementLocal() {
   const [ref, visible] = useReveal()
 
   return (
-    <section id="paiement" ref={ref as React.RefObject<HTMLDivElement>} style={{
-      background: '#2C2A25', padding: '120px 40px', position: 'relative', overflow: 'hidden',
+    <section id="paiement" ref={ref as React.RefObject<HTMLDivElement>} className="hd-section" style={{
+      background: '#2C2A25', position: 'relative', overflow: 'hidden',
     }}>
       <div style={{
         position: 'absolute', top: '20%', left: '50%', transform: 'translate(-50%, -50%)',
@@ -40,17 +40,17 @@ export default function PaiementLocal() {
           </p>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 60px 1fr 60px 1fr', gap: 0, alignItems: 'center' }}>
+        <div className="hd-pay-grid">
           <StepFrame delay={150} visible={visible}>
             <InstagramBioMock/>
             <StepCaption num="01" label="Partagez le lien" hint="Bio Instagram · WhatsApp · stories"/>
           </StepFrame>
-          <ArrowBetween visible={visible} delay={400}/>
+          <div className="hd-pay-arrow"><ArrowBetween visible={visible} delay={400}/></div>
           <StepFrame delay={550} visible={visible}>
             <PaymentPageMock/>
             <StepCaption num="02" label="Page brandée" hint="Logo, nom, couleurs de votre salon"/>
           </StepFrame>
-          <ArrowBetween visible={visible} delay={800}/>
+          <div className="hd-pay-arrow"><ArrowBetween visible={visible} delay={800}/></div>
           <StepFrame delay={950} visible={visible}>
             <PaymentMethodMock/>
             <StepCaption num="03" label="CIB ou Edahabia" hint="Paiement local sécurisé · DA"/>

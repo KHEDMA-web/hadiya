@@ -204,6 +204,61 @@ export const Icon = {
   qr:    (s = 18) => <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3h-3zM21 14h0.01M14 21h0.01M21 21h0.01M14 17h0.01M17 17h0.01M21 17h-3M17 21h-3"/></svg>,
 }
 
+// ── Scale-to-fit wrapper ─────────────────────────────────────
+// Renders children at baseWidth×baseHeight, scales down to container width.
+// Cursor coordinates in demos are hard-coded to 720×500 — scale the whole stage.
+interface ScaledFrameProps {
+  baseWidth?: number
+  baseHeight?: number
+  children: ReactNode
+  style?: CSSProperties
+}
+export function ScaledFrame({ baseWidth = 720, baseHeight = 500, children, style }: ScaledFrameProps) {
+  const ref = useRef<HTMLDivElement>(null)
+  const [scale, setScale] = useState(1)
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const update = () => {
+      const w = el.offsetWidth
+      if (w > 0) setScale(Math.min(1, w / baseWidth))
+    }
+    update()
+    const ro = new ResizeObserver(update)
+    ro.observe(el)
+    window.addEventListener('resize', update)
+    return () => { ro.disconnect(); window.removeEventListener('resize', update) }
+  }, [baseWidth])
+  return (
+    <div ref={ref} style={{ width: '100%', height: baseHeight * scale, position: 'relative', ...style }}>
+      <div style={{
+        width: baseWidth, height: baseHeight,
+        transformOrigin: 'top left',
+        transform: `scale(${scale})`,
+        position: 'absolute', top: 0, left: 0,
+      }}>
+        {children}
+      </div>
+    </div>
+  )
+}
+
+// ── Media query hook ─────────────────────────────────────────
+export function useMedia(query: string, fallback = false): boolean {
+  const [v, setV] = useState(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return fallback
+    return window.matchMedia(query).matches
+  })
+  useEffect(() => {
+    const mq = window.matchMedia(query)
+    const h = (e: MediaQueryListEvent) => setV(e.matches)
+    mq.addEventListener('change', h)
+    setV(mq.matches)
+    return () => mq.removeEventListener('change', h)
+  }, [query])
+  return v
+}
+
 // ── Demo phase runner ─────────────────────────────────────────
 export function useDemoPhases(phaseCount: number, durations: number[]) {
   const [phase, setPhase] = useState(0)
