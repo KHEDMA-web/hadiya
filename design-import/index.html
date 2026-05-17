@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <title>Réservations — Modal redesign · Hadiya</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,400&family=Geist:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <style>
+    :root {
+      --font-cormorant: 'Cormorant Garamond', serif;
+      --font-geist-sans: 'Geist', system-ui, sans-serif;
+      --color-background: #1a1816;
+      --color-foreground: #F7F4EE;
+    }
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: var(--color-background);
+      font-family: var(--font-geist-sans);
+      -webkit-font-smoothing: antialiased;
+      color: var(--color-foreground);
+      min-height: 100vh;
+    }
+    body { overflow: hidden; }
+
+    /* ── Custom thin scrollbar for the modal body ── */
+    .modal-scroll::-webkit-scrollbar {
+      width: 6px;
+    }
+    .modal-scroll::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .modal-scroll::-webkit-scrollbar-thumb {
+      background: rgba(196, 184, 158, 0.35);
+      border-radius: 999px;
+      transition: background 0.2s;
+    }
+    .modal-scroll::-webkit-scrollbar-thumb:hover {
+      background: rgba(186, 117, 23, 0.5);
+    }
+    .modal-scroll {
+      scrollbar-width: thin;
+      scrollbar-color: rgba(196, 184, 158, 0.35) transparent;
+    }
+
+    /* native scrollbars in the rest of the app — equally subtle */
+    .app-scroll::-webkit-scrollbar { width: 5px; height: 5px; }
+    .app-scroll::-webkit-scrollbar-track { background: transparent; }
+    .app-scroll::-webkit-scrollbar-thumb { background: rgba(138,130,117,0.25); border-radius: 999px; }
+
+    /* canvas scrollbar */
+    body::-webkit-scrollbar { width: 8px; height: 8px; }
+    body::-webkit-scrollbar-thumb { background: #3A3830; border-radius: 999px; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel" src="ios-frame.jsx"></script>
+  <script type="text/babel" src="browser-window.jsx"></script>
+  <script type="text/babel" src="design-canvas.jsx"></script>
+  <script type="text/babel" src="reservation-modal.jsx"></script>
+  <script type="text/babel" src="reservations-page.jsx"></script>
+
+  <script type="text/babel">
+    const { useState } = React;
+
+    function MobileScene() {
+      const [open, setOpen] = useState(false);
+      return (
+        <IOSDevice width={390} height={844} title={undefined}>
+          <div className="relative h-full w-full bg-[#E8E2D5]" style={{ fontFamily: 'var(--font-geist-sans)' }}>
+            <ReservationsPage layout="mobile" onOpenModal={() => setOpen(true)} />
+            <NouvelleReservationModal
+              open={open}
+              onClose={() => setOpen(false)}
+              layout="mobile"
+            />
+          </div>
+        </IOSDevice>
+      );
+    }
+
+    function DesktopScene() {
+      const [open, setOpen] = useState(false);
+      return (
+        <ChromeWindow
+          tabs={[{ title: 'Hadiya — Réservations', active: true }]}
+          url="hadiya.app/dashboard/reservations"
+          width={1100}
+          height={720}
+        >
+          <div className="relative h-full w-full bg-[#E8E2D5] overflow-hidden" style={{ fontFamily: 'var(--font-geist-sans)' }}>
+            <ReservationsPage layout="desktop" onOpenModal={() => setOpen(true)} />
+            <NouvelleReservationModal
+              open={open}
+              onClose={() => setOpen(false)}
+              layout="desktop"
+            />
+          </div>
+        </ChromeWindow>
+      );
+    }
+
+    function App() {
+      return (
+        <DesignCanvas>
+          <DCSection id="modal" title="Nouvelle réservation — modal redesign" subtitle="Mêmes couleurs, mêmes composants Hadiya. On polish les bords, le rythme et le scroll.">
+            <DCArtboard id="mobile" label="Mobile · iPhone" width={390} height={844}>
+              <MobileScene />
+            </DCArtboard>
+            <DCArtboard id="desktop" label="Desktop · 1100 × 720" width={1100} height={720}>
+              <DesktopScene />
+            </DCArtboard>
+          </DCSection>
+        </DesignCanvas>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

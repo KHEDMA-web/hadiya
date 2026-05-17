@@ -8,7 +8,18 @@
       "PowerShell(New-Item -ItemType Directory -Force -Path \"C:\\\\Users\\\\PC PRO DZ\\\\hadiya\\\\src\\\\app\\\\api\\\\checkout\")",
       "PowerShell(New-Item -ItemType Directory -Force -Path \"C:\\\\Users\\\\PC PRO DZ\\\\hadiya\\\\src\\\\app\\\\api\\\\webhook\\\\chargily\")",
       "PowerShell(Move-Item -Path \"C:\\\\Users\\\\PC PRO DZ\\\\hadiya\\\\app\\\\api\\\\checkout\\\\route.ts\" -Destination \"C:\\\\Users\\\\PC PRO DZ\\\\hadiya\\\\src\\\\app\\\\api\\\\checkout\\\\route.ts\" -Force)",
-      "PowerShell(Move-Item -Path \"C:\\\\Users\\\\PC PRO DZ\\\\hadiya\\\\app\\\\api\\\\webhook\\\\chargily\\\\route.ts\" -Destination \"C:\\\\Users\\\\PC PRO DZ\\\\hadiya\\\\src\\\\app\\\\api\\\\webhook\\\\chargily\\\\route.ts\" -Force)"
+      "PowerShell(Move-Item -Path \"C:\\\\Users\\\\PC PRO DZ\\\\hadiya\\\\app\\\\api\\\\webhook\\\\chargily\\\\route.ts\" -Destination \"C:\\\\Users\\\\PC PRO DZ\\\\hadiya\\\\src\\\\app\\\\api\\\\webhook\\\\chargily\\\\route.ts\" -Force)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\PC PRO DZ\\\\hadiya\" -Force)",
+      "Bash(Select-Object Name, FullName)",
+      "Bash(python3 *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git commit *)",
+      "Bash(Expand-Archive *)",
+      "Read(//c/Users/PC PRO DZ/Desktop/**)",
+      "Bash(powershell -command \"Expand-Archive -Path 'ui ux de hadiya \\(1\\).zip' -DestinationPath 'hadiya-ui-temp' -Force\")",
+      "Bash(powershell -command \"\\(Get-Content 'C:\\\\Users\\\\PC PRO DZ\\\\Desktop\\\\hadiya-ui-temp\\\\landing.html'\\).Count\")",
+      "Bash(powershell *)"
     ]
   }
 }

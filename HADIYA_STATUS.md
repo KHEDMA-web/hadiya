@@ -316,6 +316,7 @@ Chargily → POST /api/webhook/chargily → vérif HMAC ✅ → Supabase → n8n
 ### En attente
 - [ ] **Passer Chargily en production** — `CHARGILY_SECRET_KEY` Vercel + URL `/api/checkout/route.ts` (en attente des clés)
 - [ ] **n8n WhatsApp** — `N8N_WEBHOOK_URL` dans Vercel + workflow n8n
+- [ ] **Landing page (nouvelle page avant login)** — Intègre le zip `C:\Users\PC PRO DZ\Desktop\ui ux de hadiya (1).zip` dans le projet. Crée `src/app/page.tsx` comme landing (supprime le redirect vers /login), découpe les sections en composants dans `src/app/_components/landing/`, bouton "Se connecter" → `/login`. Utilise le design system existant (Tailwind 4, tokens dans globals.css). ZIP contient : landing-hero.jsx, landing-features.jsx, landing-paiement.jsx, landing-extras.jsx, landing-sync.jsx, landing-shared.jsx + images dans uploads/.
 
 ### ✅ Fait session 2026-05-16 (v7)
 - [x] Réservations redesign — fusion Claude Design (modal + cards + vues)
