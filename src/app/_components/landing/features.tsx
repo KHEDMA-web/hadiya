@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useReveal, BrowserFrame, ScaledFrame, Cursor, Icon, useDemoPhases } from './shared'
 
 const FEATURES = [
@@ -12,11 +12,17 @@ const FEATURES = [
   { id: 'stats',       label: 'Statistiques',       short: 'KPI & insights',              desc: "CA, transactions, solde moyen, clients fidèles. Des chiffres qui éclairent les décisions, pas qui les noient.", icon: 'chart' as const },
 ]
 
-import { useState } from 'react'
-
 export default function FeatureShowcase() {
   const [active, setActive] = useState('fidelite')
   const [ref, visible] = useReveal()
+  const tabsRef = useRef<HTMLDivElement>(null)
+  const [showScrollHint, setShowScrollHint] = useState(true)
+
+  const handleTabsScroll = () => {
+    const el = tabsRef.current
+    if (!el) return
+    setShowScrollHint(el.scrollLeft + el.clientWidth < el.scrollWidth - 8)
+  }
 
   useEffect(() => {
     const handler = (e: Event) => {
@@ -55,7 +61,8 @@ export default function FeatureShowcase() {
 
         <div className="hd-feat-grid">
           {/* Tabs */}
-          <div className="hd-feat-tabs">
+          <div style={{ position: 'relative' }}>
+            <div className="hd-feat-tabs" ref={tabsRef} onScroll={handleTabsScroll}>
             {FEATURES.map((f) => {
               const isActive = active === f.id
               return (
@@ -85,6 +92,16 @@ export default function FeatureShowcase() {
                 </button>
               )
             })}
+            </div>
+            <div
+              className="hd-scroll-hint"
+              style={{ opacity: showScrollHint ? 1 : 0, transition: 'opacity 0.4s' }}
+              aria-hidden="true"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="hd-scroll-arrow">
+                <path d="M9 18l6-6-6-6" stroke="#BA7517" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </div>
           </div>
 
           {/* Stage */}

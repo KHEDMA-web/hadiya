@@ -181,6 +181,10 @@ body {
   0%, 100% { opacity: 1; }
   50%       { opacity: 0; }
 }
+@keyframes hd-scroll-bounce {
+  0%, 100% { transform: translateX(0);   opacity: 0.6; }
+  50%       { transform: translateX(4px); opacity: 1;   }
+}
 
 /* ═══════════════════════════════════════════
    Landing — responsive layout classes
@@ -206,6 +210,7 @@ body { max-width: 100vw; }
 .hd-feat-grid { display: grid; grid-template-columns: 300px 1fr; gap: 48px; align-items: flex-start; }
 .hd-feat-tabs { display: flex; flex-direction: column; gap: 8px; position: sticky; top: 40px; }
 .hd-feat-tabs::-webkit-scrollbar { display: none; }
+.hd-scroll-hint { display: none; }
 
 /* Sync section */
 .hd-sync-grid     { display: grid; grid-template-columns: 300px 1fr 580px; gap: 0; align-items: center; justify-content: center; min-height: 460px; }
@@ -232,6 +237,13 @@ body { max-width: 100vw; }
   .hd-feat-grid { grid-template-columns: 1fr; gap: 32px; }
   .hd-feat-tabs { position: static; flex-direction: row; overflow-x: auto; padding-bottom: 4px; -webkit-overflow-scrolling: touch; scroll-snap-type: x mandatory; }
   .hd-feat-tab  { min-width: 220px; scroll-snap-align: start; flex-shrink: 0; }
+  .hd-scroll-hint {
+    display: flex; position: absolute; right: 0; top: 0; bottom: 4px; width: 72px;
+    background: linear-gradient(90deg, transparent, #EFEADC 65%);
+    align-items: center; justify-content: flex-end; padding-right: 10px;
+    pointer-events: none;
+  }
+  .hd-scroll-arrow { animation: hd-scroll-bounce 1.1s ease-in-out infinite; }
   .hd-sync-grid { grid-template-columns: 1fr; gap: 24px; min-height: 0; justify-items: center; }
   .hd-sync-arc-wrap { height: 80px; width: 220px; }
   .hd-pay-grid  { grid-template-columns: 1fr; gap: 32px; }
