@@ -19,7 +19,10 @@
       "Read(//c/Users/PC PRO DZ/Desktop/**)",
       "Bash(powershell -command \"Expand-Archive -Path 'ui ux de hadiya \\(1\\).zip' -DestinationPath 'hadiya-ui-temp' -Force\")",
       "Bash(powershell -command \"\\(Get-Content 'C:\\\\Users\\\\PC PRO DZ\\\\Desktop\\\\hadiya-ui-temp\\\\landing.html'\\).Count\")",
-      "Bash(powershell *)"
+      "Bash(powershell *)",
+      "PowerShell(Get-ChildItem -Recurse \"C:\\\\Users\\\\PC PRO DZ\\\\Desktop\\\\hadiya-landing-extract\" -Force | ForEach-Object { $_.FullName })",
+      "PowerShell(New-Item *)",
+      "WebFetch(domain:api.anthropic.com)"
     ]
   }
 }

@@ -316,7 +316,21 @@ Chargily → POST /api/webhook/chargily → vérif HMAC ✅ → Supabase → n8n
 ### En attente
 - [ ] **Passer Chargily en production** — `CHARGILY_SECRET_KEY` Vercel + URL `/api/checkout/route.ts` (en attente des clés)
 - [ ] **n8n WhatsApp** — `N8N_WEBHOOK_URL` dans Vercel + workflow n8n
+- [ ] **Recréer le compte salon** via `/register` (nouveau projet Supabase — base vide)
 - [x] **Landing page** ✅ — `src/app/page.tsx` + composants dans `src/app/_components/landing/` (hero, features, paiement, sync, extras, shared). Animations CSS dans globals.css. Build OK.
+
+### ✅ Fait session 2026-08-02
+- [x] Fix bug critique "Carte introuvable" (page publique `/carte/[uid]` + scanner dashboard) — policies RLS SELECT/UPDATE manquantes sur `cartes` (+ SELECT sur `transactions`/`salons`/`clients`) depuis la migration Supabase du 22/07. Policies publiques recréées via SQL Editor, vérifié fonctionnel. Détails dans `SUPABASE.md` → RLS Policies notables.
+
+### ✅ Fait session 2026-07-22 (v9)
+- [x] Migration Supabase — ancien projet en pause (limite 1 projet actif/compte Free) → nouveau projet `kxuuwvedfbgirrakzovq` recréé via script SQL (schéma identique : 11 tables, RLS, bucket `logos`, realtime)
+- [x] Fix bug connu — `SUPABASE_SERVICE_ROLE_KEY` ajouté à `.env.local` (manquait, cassait le webhook Chargily en local)
+- [x] Variables Vercel mises à jour (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`) sur Production + Preview + projet `hadiya` relié (`vercel link`)
+- [x] Déploiement production redéployé — `hadiya-eight.vercel.app` vérifié fonctionnel avec le nouveau Supabase
+- [x] Désactivation "Confirm email" (Auth → Providers → Email) — pas de SMTP configuré, bloquait toutes les connexions
+- [x] Audit complet code vs schéma — script SQL initial (basé sur SUPABASE.md) était incomplet ; colonnes manquantes ajoutées : `salons`(email/telephone/whatsapp/wilaya/abonnement), `clients.email`, `scans.uid_carte`(+salon_id nullable), `menu_items.cout`, `commande_items`(nom/prix/emoji)
+- [x] Bugs applicatifs préexistants identifiés (non corrigés, hors scope migration) : `statistiques/page.tsx` lit `commande_items.prix_unitaire` qui n'est jamais écrit (devrait lire `prix`) → bénéfice produit toujours à 0 ; `reservations/page.tsx` insère `niveau: 'bronze'` minuscule au lieu de `'Bronze'`
+- [x] Premier compte salon "TEST" créé et fonctionnel sur le nouveau projet
 
 ### ✅ Fait session 2026-05-17 (v8)
 - [x] Landing page — hero + features démo interactive + paiement CIB/Edahabia + realtime sync + differentiators + CTA + footer + navbar fixe
